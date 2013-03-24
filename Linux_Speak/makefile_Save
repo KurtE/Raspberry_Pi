@@ -1,0 +1,44 @@
+ 
+SHELL := /bin/sh
+
+.SUFFIXES:
+.SUFFIXES: .c .o .cpp
+
+DESTDIR = 
+
+prefix = /usr/local
+bindir = $(prefix)/bin
+srcdir = .
+
+INSTALL = install
+INSTALL_PROGRAM = $(INSTALL)
+
+PROGRAM := Speak
+OBJFILES := Speak.o
+
+
+Speak: $(OBJFILES) 
+
+speak.o: speak.cpp
+ 
+CFLAGS = -Wall -O2
+
+XCPLAY_CFLAGS := -pthread -fno-rtti -g -I/usr/include/espeak
+#XCPLAY_LDFLAGS := -pthread -fno-rtti -g -L/usr/lib/arm-linux-gnueabihf -libespeak.a
+XCPLAY_LDFLAGS := -pthread -fno-rtti  /usr/lib/arm-linux-gnueabihf/libespeak.so -g
+
+
+all: $(PROGRAM)
+
+%.o: %.c
+	$(CC) -o $@ -c $< $(CFLAGS) $(XCPLAY_CFLAGS)
+
+%.o: %.cpp
+	g++ -o $@ -c $< $(CFLAGS) $(XCPLAY_CFLAGS)
+
+
+$(PROGRAM): $(OBJFILES)
+	$(CC) -o $@ $(LDFLAGS) $(XCPLAY_LDFLAGS) $(OBJFILES)
+
+clean:
+	rm -rf $(PROGRAM) dist *.o *.tar.gz

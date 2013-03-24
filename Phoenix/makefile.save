@@ -1,0 +1,73 @@
+ 
+SHELL := /bin/sh
+
+.SUFFIXES:
+.SUFFIXES: .c .o .cpp
+
+DESTDIR = 
+
+prefix = /usr/local
+bindir = $(prefix)/bin
+srcdir = .
+
+INSTALL = install
+INSTALL_PROGRAM = $(INSTALL)
+
+PROGRAM := THex3_Commander_SSC32
+PROGRAM2 := THex3_DIY_SSC32
+
+OBJFILES := THex3_Commander_SSC32.o Phoenix_Code.o Phoenix_Driver_SSC32.o Phoenix_Input_Commander.o CommanderEx.o Print.o Stream.o WrapperSerial.o speak.o
+
+OBJFILES2 := THex3_Commander_SSC32.o Phoenix_Code.o Phoenix_Driver_SSC32.o Print.o Stream.o WrapperSerial.o Phoenix_Input_DIYXBee.o diyxbee.o speak.o
+
+
+THex3_Commander_SSC32: $(OBJFILES) 
+
+THex3_DIY_SSC32: $(OBJFILES2)
+
+THex3_Commander_SSC32.o: THex3_Commander_SSC32.cpp Phoenix.h Hex_Cfg.h
+
+Phoenix_Code.o: Phoenix_Code.cpp Phoenix.h Hex_Cfg.h Print.h Stream.h
+
+Phoenix_Driver_SSC32.o: Phoenix_Driver_SSC32.cpp Phoenix.h Hex_Cfg.h Print.h Stream.h
+
+Phoenix_Input_Commander.o: Phoenix_Input_Commander.cpp Phoenix.h Hex_Cfg.h CommanderEx.h Print.h Stream.h
+
+diyxbee.o: diyxbee.cpp diyxbee.h
+
+Phoenix_Input_DIYXBee.o: Phoenix_Input_DIYXBee.cpp diyxbee.h Hex_Cfg.h
+
+CommanderEx.o: CommanderEx.cpp CommanderEx.h Hex_Cfg.h
+
+Print.o: Print.cpp Print.h Stream.h
+
+speak.o: speak.cpp speak.h
+
+Stream.o: Stream.cpp Stream.h
+
+WrapperSerial.o: WrapperSerial.cpp WrapperSerial.h
+ 
+CFLAGS = -Wall -O2 -I/usr/include/estools
+
+XCPLAY_CFLAGS := -pthread -fno-rtti -g 
+XCPLAY_LDFLAGS := -pthread -fno-rtti -g -L/usr/lib/libFestival.a -L/usr/lib/speech_tools/lib/libestools.a -L/usr/lib/speech_tools/lib/libestbase.a -L/usr/lib/speech_tools/lib/libeststring.a 
+
+all: $(PROGRAM) $(PROGRAM2)
+
+%.o: %.c
+	$(CC) -o $@ -c $< $(CFLAGS) $(XCPLAY_CFLAGS)
+
+%.o: %.cpp
+	g++ -o $@ -c $< $(CFLAGS) $(XCPLAY_CFLAGS)
+
+
+$(PROGRAM): $(OBJFILES)
+	$(CC) -o $@ $(LDFLAGS) $(XCPLAY_LDFLAGS) $(OBJFILES)
+
+$(PROGRAM2): $(OBJFILES)
+	$(CC) -o $@ $(LDFLAGS) $(XCPLAY_LDFLAGS) $(OBJFILES2)
+
+
+
+clean:
+	rm -rf $(PROGRAM) $(PROGRAM2) dist *.o *.tar.gz
