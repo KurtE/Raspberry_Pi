@@ -54,7 +54,7 @@ sudo rpi-update
 
 The above will pretty much get your RPI up to date with all the latest and greatest.
 
-
+---------------------------------------------------------------------------------------------------------------------
 
 Also if setting up a PC to talk to a PI through the network, more information from Kevin:
 So for file transfer I use WinSCP. It's a nice little GUI for simple FTP. I still code on my PC 
@@ -69,6 +69,7 @@ http://www.chiark.greenend.org.uk/~sgtatham/putty/download.html
 
 As long as you are comfortable with a terminal this should work fine.
 
+---------------------------------------------------------------------------------------------------------------------
 
 Note: On the first boot, I also use the configuration program, to resize the main partition to
 the size of the SD card, plus time zone, keyboard type... If I missed changing anything can always 
@@ -83,6 +84,7 @@ It will prompt you for some stuff...
 Then to make a super user: 
 sudo adduser kurt sudo
 
+---------------------------------------------------------------------------------------------------------------------
 
 On this 2nd Pi I am trying a different USB Wifi adapter that has an external 5dbi gain antenna 
 ( http://www.amazon.com/GMYLE-Wireless-80 ... pd_cp_pc_0 ) 
@@ -90,6 +92,8 @@ that probably will have a longer range. On the first Pi I did a bunch of manual 
 up and working with my network. This time I simply had the GUI up (startX) and ran the Wifi Config
  program on the desktop and was able to see my network, choose the right AP, entered in the WPA key
  and so far it appears to work  
+
+---------------------------------------------------------------------------------------------------------------------
 
 Side note: made progress in being able to do speech output from my Phoenix Code.
 
@@ -111,4 +115,28 @@ cd git
  git clone git://github.com/KurtE/Raspberry_Pi 
 cd Raspberry_Pi/Phoenix 
 make
+
+---------------------------------------------------------------------------------------------------------------------
+
+Also My code is setup to use an XBee and an SSC-32, both of which connect up as USB devices.  I did not want my
+code to have to depend on the order the devices are added so I wished to setup rules to create an alias for these devices
+I found a lot of good information up at: http://hintshop.ludvig.co.nz/show/persistent-names-usb-serial-devices/
+Note: I had to experiment as some of the devices would hang, so I had to find the right command sequence to work.
+Example: udevadm info --query=property --name=ttyUSB0
+
+From this I created a file named 99-usb-serial.rules in the /etc/udev/rules.d directory.  A copy of mine from the first
+Raspberry Pi is contained in the Phoenix directory.  It looks like:
+    SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", ATTRS{serial}=="A800fclo", SYMLINK+="ttyXBEE"
+    SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", ATTRS{serial}=="A4014UWE", SYMLINK+="ttySSC-32"
+
+Note: You will have to change the {Serial} value (and maybe some others if not FTDI) to the actual device on your machine.
+
+Aflter I installed this file, if I type something like:
+ls -l /dev/ttyXBEE
+
+I see something like:
+lrwxrwxrwx 1 root root 7 Dec 31  1969 /dev/ttyXBEE -> ttyUSB0
+---------------------------------------------------------------------------------------------------------------------
+
+
 
