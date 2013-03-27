@@ -2,17 +2,20 @@
 MAIN_OUT = THex3_DIY_SSC32
 
 #~~~~~~~~~~~~~~~~~~~~ Source Files ~~~~~~~~~~~~~~~~~~~~
-MAIN_OBJS = \
-		THex3_Commander_SSC32.o \
-		Phoenix_Code.o \
-		Phoenix_Driver_SSC32.o \
-		Print.o \
-		Stream.o \
-		WrapperSerial.o \
-		Phoenix_Input_DIYXBee.o \
-		diyxbee.o \
-		speak.o
+SOURCES = \
+		THex3_Commander_SSC32.cpp \
+		Phoenix_Code.cpp \
+		Phoenix_Driver_SSC32.cpp \
+		Print.cpp \
+		Stream.cpp \
+		WrapperSerial.cpp \
+		Phoenix_Input_DIYXBee.cpp \
+		diyxbee.cpp \
+		speak.cpp
 
+MAIN_OBJS:= $(subst .cpp,.o,$(SOURCES))
+
+MAIN_DEPS:= $(subst .cpp,.d,$(SOURCES))
 
 #~~~~~~~~~~~~~~~~~~~~ Include Directories ~~~~~~~~~~~~~~~~~~~~
 INCLUDE_DIRS = -I. -I/usr/include/espeak
@@ -64,7 +67,16 @@ clean: begin clean_list end
 clean_list:
 	-rm $(MAIN_OBJS)
 	-rm $(MAIN_OUT)
+	-rm $(MAIN_DEPS)
 
 #~~~~~~~~~~~~~~~~~~~~ backup ~~~~~~~~~~~~~~~~~~~~
 backup: clean
 	tar cJvf ../$(MAIN_OUT)_`date +"%Y-%m-%d_%H%M"`.tar.xz *
+
+#~~~~~~~~~~~~~~~~~~~~ Dependency Generation
+include $(subst .cpp,.d,$(SOURCES))
+
+%.d: %.cpp
+	$(CC) -M $(CPPFLAGS) $< > $@.$$$$; \
+	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;  \
+	rm -f $@.$$$$
