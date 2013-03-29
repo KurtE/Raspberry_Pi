@@ -36,6 +36,8 @@
 #define DBGSerial         DBGSerialWrapper
 
 // Define other optional compnents to be included or not...
+#define OPT_ESPEAK
+#define OPT_PCMSOUND
 
 //===================================================================
 // Debug Options

@@ -69,6 +69,7 @@
 #include "Hex_Cfg.h"
 #include "Phoenix.h"
 #include "CommanderEx.h"
+#include "speak.h"
 
 //[CONSTANTS]
 #ifdef OPT_GPPLAYER
@@ -81,6 +82,12 @@ enum {
 enum {
   NORM_NORM=0, NORM_LONG, HIGH_NORM, HIGH_LONG};
 
+
+#ifdef OPT_ESPEAK
+#define SpeakStr(psz) Speak((psz), false)
+#else
+#define SpeakStr(PSZ) 
+#endif
 
 #define cTravelDeadZone 4      //The deadzone for the analog input from the remote
 
@@ -170,6 +177,9 @@ void CommanderInputController::Init(void)
   DoubleTravelOn = false;
   WalkMethod = false;
 //  DBGSerial.println("Init Commander End");
+
+  SpeakStr("Init");
+
 }
 
 //==============================================================================

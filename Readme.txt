@@ -105,6 +105,11 @@ To install the necessary stuff you need to do something like:
 sudo apt-get install espeak
 sudo apt-get install libespeak-dev
 
+Also the Phoenix code base now has the capability of outputting tones to the speacker using PCM.  To build
+using this capability you will need the appropriate header files and the like:  
+sudo apt-get libasound2-dev
+
+
 Note: you should then try to configure espeak and see if you can get it to work. More information
 earlier in this thread, but look at the data up at the link:  http://elinux.org/RPi_Text_to_Speech_%28Speech_Synthesis%29
 

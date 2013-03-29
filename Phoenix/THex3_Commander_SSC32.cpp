@@ -35,8 +35,6 @@ extern void loop(void);
 int main() {
 	setup();
 
-	SaySomething("Phoenix Program Starts");
-
 	for(;;) {
 		loop();
 	}

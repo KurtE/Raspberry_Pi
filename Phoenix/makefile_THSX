@@ -11,6 +11,7 @@ SOURCES = \
 		WrapperSerial.cpp \
 		Phoenix_Input_DIYXBee.cpp \
 		diyxbee.cpp \
+		msound.cpp \
 		speak.cpp
 
 MAIN_OBJS:= $(subst .cpp,.o,$(SOURCES))
@@ -65,9 +66,9 @@ gccversion:
 clean: begin clean_list end
 
 clean_list:
-	-rm $(MAIN_OBJS)
-	-rm $(MAIN_OUT)
-	-rm $(MAIN_DEPS)
+	-rm -f $(MAIN_OBJS)
+	-rm -f $(MAIN_OUT)
+	-rm -f $(MAIN_DEPS)
 
 #~~~~~~~~~~~~~~~~~~~~ backup ~~~~~~~~~~~~~~~~~~~~
 backup: clean

@@ -58,6 +58,8 @@ void ServoDriver::Init(void) {
 #ifdef DBGSerial
     DBGSerial.println("SSCSeerial begin failed!");
 #endif
+    MSound (3, 40, 2500, 40, 2500, 40, 2500);
+    return;
   }
 
 

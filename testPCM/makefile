@@ -1,19 +1,9 @@
 #~~~~~~~~~~~~~~~~~~~~ Output File Name ~~~~~~~~~~~~~~~~~~~~
-MAIN_OUT = THex3_Commander_SSC32
+MAIN_OUT = testPCM
 
 #~~~~~~~~~~~~~~~~~~~~ Source Files ~~~~~~~~~~~~~~~~~~~~
 SOURCES = \
-		THex3_Commander_SSC32.cpp \
-		Phoenix_Code.cpp \
-		Phoenix_Driver_SSC32.cpp \
-		Phoenix_Input_Commander.cpp \
-		CommanderEx.cpp \
-		Print.cpp \
-		Stream.cpp \
-		WrapperSerial.cpp \
-		msound.cpp \
-		speak.cpp
-
+		testPCM.cpp
 MAIN_OBJS:= $(subst .cpp,.o,$(SOURCES))
 
 MAIN_DEPS:= $(subst .cpp,.d,$(SOURCES))
@@ -66,9 +56,9 @@ gccversion:
 clean: begin clean_list end
 
 clean_list:
-	-rm -f $(MAIN_OBJS)
-	-rm -f $(MAIN_OUT)
-	-rm -f $(MAIN_DEPS)
+	-rm $(MAIN_OBJS)
+	-rm $(MAIN_OUT)
+	-rm $(MAIN_DEPS)
 
 #~~~~~~~~~~~~~~~~~~~~ backup ~~~~~~~~~~~~~~~~~~~~
 backup: clean
