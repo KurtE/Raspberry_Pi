@@ -259,7 +259,7 @@ typedef struct _PhoenixGait {
 	short           NrLiftedPos;         //Number of positions that a single leg is lifted [1-3]
 	byte            FrontDownPos;        //Where the leg should be put down to ground
 	byte            LiftDivFactor;       //Normaly: 2, when NrLiftedPos=5: 4
-	boolean         HalfLiftHeigth;      //If TRUE the outer positions of the ligted legs will be half height    
+	byte	         HalfLiftHeigth;      //If TRUE the outer positions of the ligted legs will be half height    
 
 	short           TLDivFactor;         //Number of steps that a leg is on the floor while walking
 

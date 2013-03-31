@@ -3,7 +3,7 @@
 //======================================================================================
 #ifndef _SPEAK_H_
 #define _SPEAK_H_
-extern void Speak(char *psz, bool fWait);
+extern void Speak(const char *psz, bool fWait);
 extern void EndSpeak(void);
 #endif
 

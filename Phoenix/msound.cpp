@@ -17,7 +17,7 @@
 
 #include "Hex_Cfg.h"
 #include "Phoenix.h"
-
+#include "speak.h"
 
 //==============================================================================
 // First version for support of simiply using a simple speaker...
@@ -112,7 +112,7 @@ int FillSoundBuffer(unsigned char *psz, int cb, unsigned int freq, unsigned long
 // Lets try caching out the handle...
 
 snd_pcm_t *g_PCMhandle = 0;
-snd_pcm_hw_params_t *g_hwparams;
+snd_pcm_hw_params_t *g_hwparams = 0;
 snd_pcm_sw_params_t *g_swparams;
 #define SOUND_RATE 48000
 static unsigned int buffer_time = 500000; /* ring buffer length in us */
@@ -132,10 +132,15 @@ void MSound(byte cNotes, ...)
 	va_start(ap, cNotes);
 
 	if (cNotes) {
+#ifdef OPT_ESPEAK
+	EndSpeak();	// close off speach if open
+#endif
 		// Open up the PCM...
 		if (!g_PCMhandle) {
-			  snd_pcm_hw_params_alloca(&g_hwparams);
-			  snd_pcm_sw_params_alloca(&g_swparams);
+			/*if (!g_hwparams)*/ {
+				snd_pcm_hw_params_alloca(&g_hwparams);
+				snd_pcm_sw_params_alloca(&g_swparams);
+			}
 			if ((err = snd_pcm_open(&g_PCMhandle, device, SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
 #ifdef DEBUG_SOUND
 				printf("Playback open error: %s\n", snd_strerror(err));
@@ -192,7 +197,7 @@ void MSound(byte cNotes, ...)
 				if (frames < 0) {
 					frames = snd_pcm_recover(g_PCMhandle, frames, 1);
 #ifdef DEBUG_SOUND
-					printf("%i\n", frames);
+					printf("%i\n", (int)frames);
 #endif
 				}
 				if (frames < 0) {
@@ -213,6 +218,14 @@ void MSound(byte cNotes, ...)
 #endif
 		}
 	}
+	else {
+		// No Notes passed in, use this as a signal to close anything that is open...
+		if (g_PCMhandle) {
+			snd_pcm_close(g_PCMhandle);
+			g_PCMhandle = 0;	// clear out the handle
+		}
+	}	
+
 	va_end(ap);
 #ifdef DEBUG_SOUND
 	printf("Return\n");
@@ -312,7 +325,7 @@ int set_hwparams(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
   	}
   	period_size = size;
 #ifdef DEBUG_SOUND
-	printf("Period T:%i S:%\n", period_time, period_size);
+	printf("Period T:%i S:%i\n", (int)period_time, (int)period_size);
 #endif
   	/* write the parameters to device */
   	err = snd_pcm_hw_params(handle, params);

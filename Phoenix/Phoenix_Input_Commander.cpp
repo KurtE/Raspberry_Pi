@@ -84,7 +84,19 @@ enum {
 
 
 #ifdef OPT_ESPEAK
-#define SpeakStr(psz) Speak((psz), false)
+#define SpeakStr(psz) Speak((psz), true)
+extern "C" {
+  // Move the Gait Names to program space...
+  const char s_sGN1[] PROGMEM = "Ripple 12";
+  const char s_sGN2[] PROGMEM = "Tripod 8";
+  const char s_sGN3[] PROGMEM = "Tripple 12";
+  const char s_sGN4[] PROGMEM = "Tripple 16";
+  const char s_sGN5[] PROGMEM = "Wave 24";
+  const char s_sGN6[] PROGMEM = "Tripod 6";
+  PGM_P s_asGateNames[] PROGMEM = {
+    s_sGN1, s_sGN2, s_sGN3, s_sGN4, s_sGN5, s_sGN6        };
+};
+
 #else
 #define SpeakStr(PSZ) 
 #endif
@@ -276,12 +288,19 @@ void CommanderInputController::ControlInput(void)
         && abs(g_InControlState.TravelLength.y*2)<cTravelDeadZone  ) {
         g_InControlState.GaitType = g_InControlState.GaitType+1;                    // Go to the next gait...
         if (g_InControlState.GaitType<NUM_GAITS) {                 // Make sure we did not exceed number of gaits...
+#ifndef OPT_ESPEAK
           MSound( 1, 50, 2000);  
+#endif
         } 
         else {
+#ifdef OPT_ESPEAK
           MSound (2, 50, 2000, 50, 2250); 
+#endif
           g_InControlState.GaitType = 0;
         }
+#ifdef OPT_ESPEAK
+        SpeakStr(s_asGateNames[g_InControlState.GaitType]);
+#endif
         GaitSelect();
       }
 
