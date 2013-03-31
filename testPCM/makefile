@@ -15,7 +15,7 @@ INCLUDE_DIRS = -I. -I/usr/include/espeak
 LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf
 
 #~~~~~~~~~~~~~~~~~~~~ Compiler Options ~~~~~~~~~~~~~~~~~~~~
-COMPILE_OPTS = -Wall -pedantic -g -O2 -fno-rtti
+COMPILE_OPTS = -pedantic -g -O2 -fno-rtti
 #COMPILE_OPTS = -Wall -pedantic -g -O2
 
 #~~~~~~~~~~~~~~~~~~~~ Linker Options ~~~~~~~~~~~~~~~~~~~~
