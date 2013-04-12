@@ -238,12 +238,13 @@ public:
 #endif
 
 private:
+  boolean		_fServosActive;		// Are the servos active?
 
 #ifdef OPT_GPPLAYER    
-  boolean _fGPEnabled;     // IS GP defined for this servo driver?
-  boolean _fGPActive;      // Is a sequence currently active - May change later when we integrate in sequence timing adjustment code
-  uint8_t    _iSeq;        // current sequence we are running
-    short    _sGPSM;        // Speed multiplier +-200 
+  boolean 		_fGPEnabled;        // IS GP defined for this servo driver?
+  boolean 		_fGPActive;         // Is a sequence currently active - May change later when we integrate in sequence timing adjustment code
+  uint8_t    	_iSeq;              // current sequence we are running
+  short    		_sGPSM;             // Speed multiplier +-200 
 #endif
 
 } ;   

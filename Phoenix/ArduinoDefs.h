@@ -46,6 +46,7 @@
 #define boolean bool
 
 #define delay(x)  usleep((x)*1000)
+#define delayMicroseconds(us) usleep((us))
 extern unsigned long millis(void);
 extern unsigned long micros(void);
 extern long min(long a, long b);

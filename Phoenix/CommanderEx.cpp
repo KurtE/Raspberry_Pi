@@ -50,7 +50,7 @@ void *Commander::XBeeThreadProc(void *pv) {
 	// We will do all of the stuff to intialize the serial port plus we will spawn off our thread.
 	struct termios tc;
 	
-	if ((pcmdr->fd = open(pcmdr->_pszDevice, O_RDWR | O_NOCTTY | O_SYNC | O_NONBLOCK)) == -1) {
+	if ((pcmdr->fd = open(pcmdr->_pszDevice, O_RDWR | O_NOCTTY | O_SYNC /* |  O_NONBLOCK */)) == -1) {
 		printf("Open Failed\n");
 		return false;
 	}
@@ -121,6 +121,7 @@ void *Commander::XBeeThreadProc(void *pv) {
 		return false;
 	}
 	
+#if 0
 	/* purge buffer */
 	{
 		char buf[1024];
@@ -130,15 +131,18 @@ void *Commander::XBeeThreadProc(void *pv) {
 			n = read(pcmdr->fd, buf, sizeof(buf));
 		} while (n > 0);
 	}
-	fcntl(pcmdr->fd, F_SETFL, 0); /* disable blocking */
 	
+	fcntl(pcmdr->fd, F_SETFL, 0); /* disable blocking */
+#else
+	fflush(pcmdr->pfile);	// again discard anything we have not read...
+#endif
 
 //    printf("Thread Init\n");	
 
     // May want to add end code... But for now don't have any defined...
     int ch;	
     for(;;) {	
-    	 while((ch = getc(pcmdr->pfile)) != EOF) {
+    	while((ch = getc(pcmdr->pfile)) != EOF) {
             if(pcmdr->index == -1){         // looking for new packet
                 if(ch == 0xff){
                     pcmdr->index = 0;
@@ -157,18 +161,18 @@ void *Commander::XBeeThreadProc(void *pv) {
                 if(pcmdr->index == 7){ // packet complete
                     if(pcmdr->checksum%256 == 255){
                          // Lets grab our mutex to keep things consistent
-			    pthread_mutex_lock(&pcmdr->lock);
-			    for (int i=0; i < 6; i++)
-				pcmdr->vals[i] = pcmdr->bInBuf[i];
-			    pcmdr->fValidPacket = true;
-			    pthread_mutex_unlock(&pcmdr->lock);
+						pthread_mutex_lock(&pcmdr->lock);
+						for (int i=0; i < 6; i++)
+							pcmdr->vals[i] = pcmdr->bInBuf[i];
+						pcmdr->fValidPacket = true;
+						pthread_mutex_unlock(&pcmdr->lock);
                     }
                     pcmdr->index = -1;  // Say we are ready to start looking for start of next message...
                 }
             }
-        }
-        // If we get to here try sleeping for a little time
-        usleep(50);
+		}
+		// If we get to here try sleeping for a little time
+		usleep(250); // Note: we could maybe simply block the thread until input available!
     }
     return 0;
 }

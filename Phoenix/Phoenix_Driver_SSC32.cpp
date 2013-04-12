@@ -75,7 +75,8 @@ void ServoDriver::Init(void) {
     DBGSerial.println(abT);
   }
 #endif
-
+  _fServosActive = false;	// are the servos active?
+ 
   // Lets do the check for GP Enabled here...
 #ifdef OPT_GPPLAYER
   _fGPEnabled = false;  // starts off assuming that it is not enabled...
@@ -203,6 +204,7 @@ void ServoDriver::GPStartSeq(uint8_t iSeq)
     _iSeq = iSeq;
     g_bGPCntSteps = 0xff;
     g_fGPSMChanged = false;
+    _fServosActive = true;		// Remember we have actually output something to the servos...
   }
   else {
     _iSeq = iSeq;  // Signal for abort
@@ -427,6 +429,7 @@ void ServoDriver::CommitServoDriver(word wMoveTime)
 #endif
 
   g_InputController.AllowControllerInterrupts(true);    
+  _fServosActive = true;		// Remember we have actually output something to the servos...
 
 }
 
@@ -435,14 +438,17 @@ void ServoDriver::CommitServoDriver(word wMoveTime)
 //--------------------------------------------------------------------
 void ServoDriver::FreeServos(void)
 {
-  g_InputController.AllowControllerInterrupts(false);    // If on xbee on hserial tell hserial to not processess...
-  for (byte LegIndex = 0; LegIndex < 32; LegIndex++) {
-    SSCSerial.print("#");
-    SSCSerial.print(LegIndex, DEC);
-    SSCSerial.print("P0");
+  if (_fServosActive) {
+    g_InputController.AllowControllerInterrupts(false);    //If on xbee on hserial tell hserial to not processess...
+    for (byte LegIndex = 0; LegIndex < 32; LegIndex++) {
+      SSCSerial.print("#");
+      SSCSerial.print(LegIndex, DEC);
+      SSCSerial.print("P0");
+    }
+    SSCSerial.print("T200\r");
+    g_InputController.AllowControllerInterrupts(true);    
+    _fServosActive = false;		// remember we turned off the servos...
   }
-  SSCSerial.print("T200\r");
-  g_InputController.AllowControllerInterrupts(true);    
 }
 
 #ifdef OPT_TERMINAL_MONITOR  

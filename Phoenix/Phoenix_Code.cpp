@@ -503,6 +503,7 @@ void setup(){
   DBGSerial.println(IsRobotUpsideDown, DEC);
 #endif  
 #endif
+  AllDown = true;	// make sure this is init to something... 
 
 }
 
@@ -518,75 +519,79 @@ void loop(void)
   lTimerStart = millis(); 
   DoBackgroundProcess();
   //Read input
-//  DBGSerial.println("Loop");
+  //  DBGSerial.println("Loop");
   CheckVoltage();        // check our voltages...
   if (!g_fLowVoltageShutdown) {
     g_InputController.ControlInput();
   }
   WriteOutputs();        // Write Outputs
 
+  // We should be able to minimize processor usage when the robot is not logically on
+  // or was not on before this call...
+  if (g_InControlState.fPrev_RobotOn || g_InControlState.fPrev_RobotOn) {
+
 #ifdef IsRobotUpsideDown
     if (!fWalking){// dont do this while walking
-    g_fRobotUpsideDown = IsRobotUpsideDown;    // Grab the current state of the robot... 
-    if (g_fRobotUpsideDown != fRobotUpsideDownPrev) {
-      // Double check to make sure that it was not a one shot error
       g_fRobotUpsideDown = IsRobotUpsideDown;    // Grab the current state of the robot... 
       if (g_fRobotUpsideDown != fRobotUpsideDownPrev) {
-        fRobotUpsideDownPrev = g_fRobotUpsideDown;
+        // Double check to make sure that it was not a one shot error
+        g_fRobotUpsideDown = IsRobotUpsideDown;    // Grab the current state of the robot... 
+        if (g_fRobotUpsideDown != fRobotUpsideDownPrev) {
+          fRobotUpsideDownPrev = g_fRobotUpsideDown;
 #ifdef DGBSerial        
-        DBGSerial.println(fRobotUpsideDownPrev, DEC);
+          DBGSerial.println(fRobotUpsideDownPrev, DEC);
 #endif        
+        }
       }
     }
-  }
-  //  DBGSerial.println(analogRead(0), DEC);
+    //  DBGSerial.println(analogRead(0), DEC);
 #endif
 #ifdef OPT_WALK_UPSIDE_DOWN
-  if (g_fRobotUpsideDown){
-    g_InControlState.TravelLength.x = -g_InControlState.TravelLength.x;
-    g_InControlState.BodyPos.x = -g_InControlState.BodyPos.x;
-    g_InControlState.SLLeg.x = -g_InControlState.SLLeg.x;
-    g_InControlState.BodyRot1.z = -g_InControlState.BodyRot1.z;
-  }
+    if (g_fRobotUpsideDown){
+      g_InControlState.TravelLength.x = -g_InControlState.TravelLength.x;
+      g_InControlState.BodyPos.x = -g_InControlState.BodyPos.x;
+      g_InControlState.SLLeg.x = -g_InControlState.SLLeg.x;
+      g_InControlState.BodyRot1.z = -g_InControlState.BodyRot1.z;
+    }
 #endif
 
 #ifdef OPT_GPPLAYER
     //GP Player
-  g_ServoDriver.GPPlayer();
-  if (g_ServoDriver.FIsGPSeqActive())
-    return;  // go back to process the next message
+    g_ServoDriver.GPPlayer();
+    if (g_ServoDriver.FIsGPSeqActive())
+      return;  // go back to process the next message
 #endif
 
-  //Single leg control
-  SingleLegControl ();
-  DoBackgroundProcess();
+    //Single leg control
+    SingleLegControl ();
+    DoBackgroundProcess();
 
-  //Gait
-  GaitSeq();
+    //Gait
+    GaitSeq();
 
-  DoBackgroundProcess();
+    DoBackgroundProcess();
 
-  //Balance calculations
-  TotalTransX = 0;     //reset values used for calculation of balance
-  TotalTransZ = 0;
-  TotalTransY = 0;
-  TotalXBal1 = 0;
-  TotalYBal1 = 0;
-  TotalZBal1 = 0;
+    //Balance calculations
+    TotalTransX = 0;     //reset values used for calculation of balance
+    TotalTransZ = 0;
+    TotalTransY = 0;
+    TotalXBal1 = 0;
+    TotalYBal1 = 0;
+    TotalZBal1 = 0;
 #ifdef QUADMODE
-//  TotalTransLegCnt = 0;
-//  TotGaitBalPercent = 0;
+    //  TotalTransLegCnt = 0;
+    //  TotGaitBalPercent = 0;
 #endif
-  
-  if (g_InControlState.BalanceMode) {
+
+    if (g_InControlState.BalanceMode) {
 #ifdef DEBUG
       if (g_fDebugOutput) {
-  TravelRequest = (abs(g_InControlState.TravelLength.x)>cTravelDeadZone) || (abs(g_InControlState.TravelLength.z)>cTravelDeadZone) 
-    || (abs(g_InControlState.TravelLength.y)>cTravelDeadZone) || (g_InControlState.ForceGaitStepCnt != 0) || fWalking;
+        TravelRequest = (abs(g_InControlState.TravelLength.x)>cTravelDeadZone) || (abs(g_InControlState.TravelLength.z)>cTravelDeadZone) 
+          || (abs(g_InControlState.TravelLength.y)>cTravelDeadZone) || (g_InControlState.ForceGaitStepCnt != 0) || fWalking;
 
         DBGSerial.print("T("); 
-		DBGSerial.print(fWalking, DEC);
-		DBGSerial.print(" ");
+        DBGSerial.print(fWalking, DEC);
+        DBGSerial.print(" ");
         DBGSerial.print(g_InControlState.TravelLength.x,DEC); 
         DBGSerial.print(","); 
         DBGSerial.print(g_InControlState.TravelLength.y,DEC); 
@@ -595,65 +600,66 @@ void loop(void)
         DBGSerial.print(")"); 
       }
 #endif
-    for (LegIndex = 0; LegIndex < (CNT_LEGS/2); LegIndex++) {    // balance calculations for all Right legs
+      for (LegIndex = 0; LegIndex < (CNT_LEGS/2); LegIndex++) {    // balance calculations for all Right legs
 
-      DoBackgroundProcess();
-      BalCalcOneLeg (-LegPosX[LegIndex]+GaitPosX[LegIndex], LegPosZ[LegIndex]+GaitPosZ[LegIndex], 
-      (LegPosY[LegIndex]-(short)pgm_read_word(&cInitPosY[LegIndex]))+GaitPosY[LegIndex], LegIndex);
+        DoBackgroundProcess();
+        BalCalcOneLeg (-LegPosX[LegIndex]+GaitPosX[LegIndex], LegPosZ[LegIndex]+GaitPosZ[LegIndex], 
+        (LegPosY[LegIndex]-(short)pgm_read_word(&cInitPosY[LegIndex]))+GaitPosY[LegIndex], LegIndex);
+      }
+
+      for (LegIndex = (CNT_LEGS/2); LegIndex < CNT_LEGS; LegIndex++) {    // balance calculations for all Right legs
+        DoBackgroundProcess();
+        BalCalcOneLeg(LegPosX[LegIndex]+GaitPosX[LegIndex], 
+        LegPosZ[LegIndex]+GaitPosZ[LegIndex], 
+        (LegPosY[LegIndex]-(short)pgm_read_word(&cInitPosY[LegIndex]))+GaitPosY[LegIndex], LegIndex);
+      }
+      BalanceBody();
     }
 
-    for (LegIndex = (CNT_LEGS/2); LegIndex < CNT_LEGS; LegIndex++) {    // balance calculations for all Right legs
+
+    //Reset IKsolution indicators 
+    IKSolution = 0 ;
+    IKSolutionWarning = 0; 
+    IKSolutionError = 0 ;
+
+    //Do IK for all Right legs
+    for (LegIndex = 0; LegIndex < (CNT_LEGS/2); LegIndex++) {    
       DoBackgroundProcess();
-      BalCalcOneLeg(LegPosX[LegIndex]+GaitPosX[LegIndex], 
-      LegPosZ[LegIndex]+GaitPosZ[LegIndex], 
-      (LegPosY[LegIndex]-(short)pgm_read_word(&cInitPosY[LegIndex]))+GaitPosY[LegIndex], LegIndex);
+      BodyFK(-LegPosX[LegIndex]+g_InControlState.BodyPos.x+GaitPosX[LegIndex] - TotalTransX,
+      LegPosZ[LegIndex]+g_InControlState.BodyPos.z+GaitPosZ[LegIndex] - TotalTransZ,
+      LegPosY[LegIndex]+g_InControlState.BodyPos.y+GaitPosY[LegIndex] - TotalTransY,
+      GaitRotY[LegIndex], LegIndex);
+
+      LegIK (LegPosX[LegIndex]-g_InControlState.BodyPos.x+BodyFKPosX-(GaitPosX[LegIndex] - TotalTransX), 
+      LegPosY[LegIndex]+g_InControlState.BodyPos.y-BodyFKPosY+GaitPosY[LegIndex] - TotalTransY,
+      LegPosZ[LegIndex]+g_InControlState.BodyPos.z-BodyFKPosZ+GaitPosZ[LegIndex] - TotalTransZ, LegIndex);
     }
-    BalanceBody();
-  }
 
-
-  //Reset IKsolution indicators 
-  IKSolution = 0 ;
-  IKSolutionWarning = 0; 
-  IKSolutionError = 0 ;
-
-  //Do IK for all Right legs
-  for (LegIndex = 0; LegIndex < (CNT_LEGS/2); LegIndex++) {    
-    DoBackgroundProcess();
-    BodyFK(-LegPosX[LegIndex]+g_InControlState.BodyPos.x+GaitPosX[LegIndex] - TotalTransX,
-    LegPosZ[LegIndex]+g_InControlState.BodyPos.z+GaitPosZ[LegIndex] - TotalTransZ,
-    LegPosY[LegIndex]+g_InControlState.BodyPos.y+GaitPosY[LegIndex] - TotalTransY,
-    GaitRotY[LegIndex], LegIndex);
-
-    LegIK (LegPosX[LegIndex]-g_InControlState.BodyPos.x+BodyFKPosX-(GaitPosX[LegIndex] - TotalTransX), 
-    LegPosY[LegIndex]+g_InControlState.BodyPos.y-BodyFKPosY+GaitPosY[LegIndex] - TotalTransY,
-    LegPosZ[LegIndex]+g_InControlState.BodyPos.z-BodyFKPosZ+GaitPosZ[LegIndex] - TotalTransZ, LegIndex);
-  }
-
-  //Do IK for all Left legs  
-  for (LegIndex = (CNT_LEGS/2); LegIndex < CNT_LEGS; LegIndex++) {
-    DoBackgroundProcess();
-    BodyFK(LegPosX[LegIndex]-g_InControlState.BodyPos.x+GaitPosX[LegIndex] - TotalTransX,
-    LegPosZ[LegIndex]+g_InControlState.BodyPos.z+GaitPosZ[LegIndex] - TotalTransZ,
-    LegPosY[LegIndex]+g_InControlState.BodyPos.y+GaitPosY[LegIndex] - TotalTransY,
-    GaitRotY[LegIndex], LegIndex);
-    LegIK (LegPosX[LegIndex]+g_InControlState.BodyPos.x-BodyFKPosX+GaitPosX[LegIndex] - TotalTransX,
-    LegPosY[LegIndex]+g_InControlState.BodyPos.y-BodyFKPosY+GaitPosY[LegIndex] - TotalTransY,
-    LegPosZ[LegIndex]+g_InControlState.BodyPos.z-BodyFKPosZ+GaitPosZ[LegIndex] - TotalTransZ, LegIndex);
-  }
+    //Do IK for all Left legs  
+    for (LegIndex = (CNT_LEGS/2); LegIndex < CNT_LEGS; LegIndex++) {
+      DoBackgroundProcess();
+      BodyFK(LegPosX[LegIndex]-g_InControlState.BodyPos.x+GaitPosX[LegIndex] - TotalTransX,
+      LegPosZ[LegIndex]+g_InControlState.BodyPos.z+GaitPosZ[LegIndex] - TotalTransZ,
+      LegPosY[LegIndex]+g_InControlState.BodyPos.y+GaitPosY[LegIndex] - TotalTransY,
+      GaitRotY[LegIndex], LegIndex);
+      LegIK (LegPosX[LegIndex]+g_InControlState.BodyPos.x-BodyFKPosX+GaitPosX[LegIndex] - TotalTransX,
+      LegPosY[LegIndex]+g_InControlState.BodyPos.y-BodyFKPosY+GaitPosY[LegIndex] - TotalTransY,
+      LegPosZ[LegIndex]+g_InControlState.BodyPos.z-BodyFKPosZ+GaitPosZ[LegIndex] - TotalTransZ, LegIndex);
+    }
 #ifdef OPT_WALK_UPSIDE_DOWN
-  if (g_fRobotUpsideDown){ //Need to set them back for not messing with the SmoothControl
-    g_InControlState.BodyPos.x = -g_InControlState.BodyPos.x;
-    g_InControlState.SLLeg.x = -g_InControlState.SLLeg.x;
-    g_InControlState.BodyRot1.z = -g_InControlState.BodyRot1.z;
-  }
+    if (g_fRobotUpsideDown){ //Need to set them back for not messing with the SmoothControl
+      g_InControlState.BodyPos.x = -g_InControlState.BodyPos.x;
+      g_InControlState.SLLeg.x = -g_InControlState.SLLeg.x;
+      g_InControlState.BodyRot1.z = -g_InControlState.BodyRot1.z;
+    }
 #endif
-  //Check mechanical limits
-  CheckAngles();
+    //Check mechanical limits
+    CheckAngles();
 
-  //Write IK errors to leds
-  LedC = IKSolutionWarning;
-  LedA = IKSolutionError;
+    //Write IK errors to leds
+    LedC = IKSolutionWarning;
+    LedA = IKSolutionError;
+  }
 
   //Drive Servos
   if (g_InControlState.fRobotOn) {
@@ -710,6 +716,7 @@ void loop(void)
       do {
         // Wait the appropriate time, call any background process while waiting...
         DoBackgroundProcess();
+		delayMicroseconds(100);	// Allow processor to be used for something else
       } 
       while (millis() < lTimeWaitEnd);
       DebugWrite(A1, LOW);
@@ -749,7 +756,7 @@ void loop(void)
   } 
   else {
     //Turn the bot off - May need to add ajust here...
-    if (g_InControlState.fPrev_RobotOn || (AllDown= 0)) {
+    if (g_InControlState.fPrev_RobotOn || (!AllDown)) {
       ServoMoveTime = 600;
       StartUpdateServos();
       g_ServoDriver.CommitServoDriver(ServoMoveTime);
@@ -767,9 +774,9 @@ void loop(void)
     // check things. call it here..
 #ifdef OPT_TERMINAL_MONITOR  
     if (TerminalMonitor())
-      return;           
+      /*return */;           
 #endif
-    delay(20);  // give a pause between times we call if nothing is happening
+    delay(100);  // give a pause between times we call if nothing is happening
   }
 
   PrevServoMoveTime = ServoMoveTime;
