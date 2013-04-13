@@ -43,6 +43,8 @@ Commander::Commander(){
 
 void *Commander::XBeeThreadProc(void *pv) {
     Commander *pcmdr = (Commander*)pv;
+    fd_set readfs; // file descriptor set to wait on.
+    timeval tv;	// how long to wait.
 
 //    printf("Thread start(%s)\n", pcmdr->_pszDevice);	
 
@@ -121,28 +123,21 @@ void *Commander::XBeeThreadProc(void *pv) {
 		return false;
 	}
 	
-#if 0
-	/* purge buffer */
-	{
-		char buf[1024];
-		int n;
-		do {
-			usleep(5000); /* 5ms */
-			n = read(pcmdr->fd, buf, sizeof(buf));
-		} while (n > 0);
-	}
-	
-	fcntl(pcmdr->fd, F_SETFL, 0); /* disable blocking */
-#else
 	fflush(pcmdr->pfile);	// again discard anything we have not read...
-#endif
 
 //    printf("Thread Init\n");	
 
     // May want to add end code... But for now don't have any defined...
     int ch;	
     for(;;) {	
-    	while((ch = getc(pcmdr->pfile)) != EOF) {
+        // Lets try using select to block our thread until we have some input available...
+	 FD_ZERO(&readfs);
+        FD_SET(pcmdr->fd, &readfs);	// Make sure we are set to wait for our descriptor
+        tv.tv_sec = 0;
+        tv.tv_usec = 250000;	// 1/4 of a second...
+        select(pcmdr->fd + 1, &readfs, NULL, NULL, &tv);	// wait until some input is available...
+        
+    	 while((ch = getc(pcmdr->pfile)) != EOF) {
             if(pcmdr->index == -1){         // looking for new packet
                 if(ch == 0xff){
                     pcmdr->index = 0;
@@ -161,18 +156,18 @@ void *Commander::XBeeThreadProc(void *pv) {
                 if(pcmdr->index == 7){ // packet complete
                     if(pcmdr->checksum%256 == 255){
                          // Lets grab our mutex to keep things consistent
-						pthread_mutex_lock(&pcmdr->lock);
-						for (int i=0; i < 6; i++)
-							pcmdr->vals[i] = pcmdr->bInBuf[i];
-						pcmdr->fValidPacket = true;
-						pthread_mutex_unlock(&pcmdr->lock);
+			    pthread_mutex_lock(&pcmdr->lock);
+			    for (int i=0; i < 6; i++)
+				pcmdr->vals[i] = pcmdr->bInBuf[i];
+			    pcmdr->fValidPacket = true;
+			    pthread_mutex_unlock(&pcmdr->lock);
                     }
                     pcmdr->index = -1;  // Say we are ready to start looking for start of next message...
                 }
             }
-		}
-		// If we get to here try sleeping for a little time
-		usleep(250); // Note: we could maybe simply block the thread until input available!
+       }
+       // If we get to here try sleeping for a little time
+	usleep(1000); // Note: we could maybe simply block the thread until input available!
     }
     return 0;
 }

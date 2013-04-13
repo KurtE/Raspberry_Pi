@@ -101,6 +101,7 @@ uint8_t ReadFromXBee(uint8_t *pb, uint8_t cb, ulong wTimeout, uint16_t wEOL)
       }
       // Call off to the background process if any...
       DoBackgroundProcess();
+      delay(1);  // Make sure we give some time back to the system
     }
 #ifdef DEBUG_VERBOSE                
     if (g_fDebugOutput) {

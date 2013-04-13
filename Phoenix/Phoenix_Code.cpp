@@ -774,9 +774,9 @@ void loop(void)
     // check things. call it here..
 #ifdef OPT_TERMINAL_MONITOR  
     if (TerminalMonitor())
-      /*return */;           
+      return ;           
 #endif
-    delay(100);  // give a pause between times we call if nothing is happening
+    delay(250);  // give a pause between times we call if nothing is happening
   }
 
   PrevServoMoveTime = ServoMoveTime;
