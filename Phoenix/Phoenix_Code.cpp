@@ -712,6 +712,7 @@ void loop(void)
       //Get endtime and calculate wait time
       lTimeWaitEnd = lTimerStart + PrevServoMoveTime;
 
+#ifdef OPT_BACKGROUND_PROCESS
       DebugWrite(A1, HIGH);
       do {
         // Wait the appropriate time, call any background process while waiting...
@@ -720,6 +721,9 @@ void loop(void)
       } 
       while (millis() < lTimeWaitEnd);
       DebugWrite(A1, LOW);
+#else
+      delay(max(lTimeWaitEnd-millis(), 1));
+#endif
 #ifdef DEBUG_X
       if (g_fDebugOutput) {
 
