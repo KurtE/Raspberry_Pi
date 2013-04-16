@@ -6,4 +6,3 @@
 extern void Speak(const char *psz, bool fWait);
 extern void EndSpeak(void);
 #endif
-

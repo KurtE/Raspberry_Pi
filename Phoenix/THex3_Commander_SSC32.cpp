@@ -5,7 +5,7 @@
 //Date: 29-10-2009
 //Programmer: Jeroen Janssen [aka Xan]
 //         Kurt Eckhardt(KurtE) converted to C and Arduino
-//   Kåre Halvorsen aka Zenta - Makes everything work correctly!     
+//   Kåre Halvorsen aka Zenta - Makes everything work correctly!
 //
 // This version of the Phoenix code was ported over to the Arduino Environement
 // and is specifically configured for the Arbotix Robocontroller board
@@ -31,12 +31,12 @@
 extern void setup(void);
 extern void loop(void);
 
+int main()
+{
+    setup();
 
-int main() {
-	setup();
-
-	for(;;) {
-		loop();
-	}
+    for(;;)
+    {
+        loop();
+    }
 }
-

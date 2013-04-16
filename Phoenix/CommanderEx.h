@@ -9,17 +9,16 @@
 
   This library is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  Lesser General Public License for more details.
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
 
-  You should have received a copy of the GNU Lesser General Public
-  License along with this library; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 // This version was modified from the original one by Kurt to run on Linux for Raspberry Pi.
 // Also I renamed some members and the like to make it easier to understand...
-
 
 #ifndef Commander_h
 #define Commander_h
@@ -41,45 +40,44 @@
 /* the Commander will send out a frame at about 30hz, this class helps decipher the output. */
 
 class Commander
-{    
-  public:
-    Commander(); 
-    bool begin(char *pszComm, speed_t baud);
-    void UseSouthPaw();     // enable southpaw configuration
-    int ReadMsgs();         // must be called regularly to clean out Serial buffer
+{
+    public:
+        Commander();
+        bool begin(char *pszComm, speed_t baud);
+        void UseSouthPaw();                       // enable southpaw configuration
+        int ReadMsgs();                           // must be called regularly to clean out Serial buffer
 
-    // joystick values are -125 to 125
-    signed char rightV;      // vertical stick movement = forward speed
-    signed char rightH;      // horizontal stick movement = sideways or angular speed
-    signed char leftV;      // vertical stick movement = tilt    
-    signed char leftH;      // horizontal stick movement = pan (when we run out of pan, turn body?)
-    // 0-1023, use in extended mode    
-    int pan;
-    int tilt;
-    
-    // buttons are 0 or 1 (PRESSED), and bitmapped
-    unsigned char buttons;  // 
-    unsigned char ext;      // Extended function set
-        
-    // Hooks are used as callbacks for button presses -- NOT IMPLEMENT YET
-        
-  private:
-    // internal variables used for reading messages
-    unsigned char vals[6];  // temporary values, moved after we confirm checksum
-    int index;              // -1 = waiting for new packet
-    int checksum;
-    unsigned char status; 
+        // joystick values are -125 to 125
+        signed char rightV;                       // vertical stick movement = forward speed
+        signed char rightH;                       // horizontal stick movement = sideways or angular speed
+        signed char leftV;                        // vertical stick movement = tilt
+        signed char leftH;                        // horizontal stick movement = pan (when we run out of pan, turn body?)
+        // 0-1023, use in extended mode
+        int pan;
+        int tilt;
 
-    //Private stuff for Linux threading and file descriptor, and open file...
-    int fd;			// file descriptor
-    FILE *pfile;		// Pointer to file
-    pthread_t tid;		// Thread Id of our reader thread...
-    pthread_mutex_t lock;	// A lock to make sure we don't walk over ourself...
-    bool fValidPacket;      // Do we have a valid packet?
-    unsigned char bInBuf[7]; // Input buffer we use in the thread to process partial messages.
-    char *_pszDevice;
-   speed_t _baud;
-    static void *XBeeThreadProc(void *);
+        // buttons are 0 or 1 (PRESSED), and bitmapped
+        unsigned char buttons;                    //
+        unsigned char ext;                        // Extended function set
+
+        // Hooks are used as callbacks for button presses -- NOT IMPLEMENT YET
+
+    private:
+        // internal variables used for reading messages
+        unsigned char vals[6];                    // temporary values, moved after we confirm checksum
+        int index;                                // -1 = waiting for new packet
+        int checksum;
+        unsigned char status;
+
+        //Private stuff for Linux threading and file descriptor, and open file...
+        int fd;                                   // file descriptor
+        FILE *pfile;                              // Pointer to file
+        pthread_t tid;                            // Thread Id of our reader thread...
+        pthread_mutex_t lock;                     // A lock to make sure we don't walk over ourself...
+        bool fValidPacket;                        // Do we have a valid packet?
+        unsigned char bInBuf[7];                  // Input buffer we use in the thread to process partial messages.
+        char *_pszDevice;
+        speed_t _baud;
+        static void *XBeeThreadProc(void *);
 };
-
 #endif

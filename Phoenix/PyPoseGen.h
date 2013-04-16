@@ -3,18 +3,18 @@
 #define TEST_POSES
 #define NOPROGMEM
 #if defined(NOPROGMEM)
-    #define PROGMEM
-    #define prog_uint16_t uint16_t
-    #define pgm_read_byte(x)        (*((char *)x))
+#define PROGMEM
+#define prog_uint16_t uint16_t
+#define pgm_read_byte(x)        (*((char *)x))
 //  #define pgm_read_word(x)        (*((short *)(x & 0xfffffffe)))
-    #define pgm_read_word(x)        ( ((*((unsigned char *)x + 1)) << 8) + (*((unsigned char *)x)))
-    #define pgm_read_byte_near(x)   (*((char *)x))
-    #define pgm_read_byte_far(x)    (*((char *)x))
+#define pgm_read_word(x)        ( ((*((unsigned char *)x + 1)) << 8) + (*((unsigned char *)x)))
+#define pgm_read_byte_near(x)   (*((char *)x))
+#define pgm_read_byte_far(x)    (*((char *)x))
 //  #define pgm_read_word_near(x)   (*((short *)(x & 0xfffffffe))
 //  #define pgm_read_word_far(x)    (*((short *)(x & 0xfffffffe)))
-    #define pgm_read_word_near(x)   ( ((*((unsigned char *)x + 1)) << 8) + (*((unsigned char *)x)))
-    #define pgm_read_word_far(x)    ( ((*((unsigned char *)x + 1)) << 8) + (*((unsigned char *)x))))
-    #define PSTR(x)  x
+#define pgm_read_word_near(x)   ( ((*((unsigned char *)x + 1)) << 8) + (*((unsigned char *)x)))
+#define pgm_read_word_far(x)    ( ((*((unsigned char *)x + 1)) << 8) + (*((unsigned char *)x))))
+#define PSTR(x)  x
 #else
 #include <avr/pgmspace.h>
 #endif
@@ -33,12 +33,113 @@ PROGMEM prog_uint16_t _wag_5[] = {18, 511, 512, 300, 710, 114, 906, 639, 331, 26
 PROGMEM prog_uint16_t _wag_4[] = {18, 511, 512, 312, 712, 113, 906, 645, 331, 267, 772, 254, 767, 663, 327, 308, 682, 47, 967};
 PROGMEM prog_uint16_t _wag_0[] = {18, 547, 514, 286, 719, 51, 935, 488, 509, 230, 788, 17, 977, 491, 518, 234, 723, 0, 921};
 
-PROGMEM transition_t Wag[] = {{0,17} ,{_wag_0,500} ,{_wag_1,500} ,{_wag_2,500} ,{_wag_3,500} ,{_wag_4,500} ,{_wag_5,500} ,{_Wag_6,500} ,{_wag_5,500} ,{_Wag_6,500} ,{_wag_5,500} ,{_Wag_6,500} ,{_wag_5,500} ,{_wag_4,500} ,{_wag_3,500} ,{_wag_2,500} ,{_wag_1,500} ,{_wag_0,500} };
-PROGMEM transition_t Rollover[] = {{0,6} ,{R1,500} ,{R2,500} ,{R3,500} ,{R4,500} ,{R5,500} ,{R6,500} };
+PROGMEM transition_t Wag[] =
+{
+    {
+        0,17
+    }
+    ,
+    {
+        _wag_0,500
+    }
+    ,
+    {
+        _wag_1,500
+    }
+    ,
+    {
+        _wag_2,500
+    }
+    ,
+    {
+        _wag_3,500
+    }
+    ,
+    {
+        _wag_4,500
+    }
+    ,
+    {
+        _wag_5,500
+    }
+    ,
+    {
+        _Wag_6,500
+    }
+    ,
+    {
+        _wag_5,500
+    }
+    ,
+    {
+        _Wag_6,500
+    }
+    ,
+    {
+        _wag_5,500
+    }
+    ,
+    {
+        _Wag_6,500
+    }
+    ,
+    {
+        _wag_5,500
+    }
+    ,
+    {
+        _wag_4,500
+    }
+    ,
+    {
+        _wag_3,500
+    }
+    ,
+    {
+        _wag_2,500
+    }
+    ,
+    {
+        _wag_1,500
+    }
+    ,
+    {
+        _wag_0,500
+    }
+};
+PROGMEM transition_t Rollover[] =
+{
+    {
+        0,6
+    }
+    ,
+    {
+        R1,500
+    }
+    ,
+    {
+        R2,500
+    }
+    ,
+    {
+        R3,500
+    }
+    ,
+    {
+        R4,500
+    }
+    ,
+    {
+        R5,500
+    }
+    ,
+    {
+        R6,500
+    }
+};
 
 #ifdef EXPORT_POSE_LIST
 PROGMEM transition_t *PoseList[] = {  Wag ,Rollover };
-
 #endif
 #endif
 #endif
