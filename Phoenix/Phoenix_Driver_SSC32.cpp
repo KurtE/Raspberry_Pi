@@ -7,6 +7,20 @@
 // Servo Driver - This version is setup to use the SSC-32 to control
 // the servos.
 //====================================================================
+#ifdef c4DOF
+#define NUMSERVOSPERLEG 4
+#else
+#define NUMSERVOSPERLEG 3
+#endif
+
+#define NUMSERVOS (NUMSERVOSPERLEG*CNT_LEGS)
+
+// Local data -- BUGBUG -- Could make it part of Servo object.
+// Lets try only output something if it changed.
+word		g_awSSC32ServoPos[NUMSERVOS];		// save away previous servo positions...
+boolean		g_fSSC32ServoChanged;
+
+
 
 //Servo Pin numbers - May be SSC-32 or actual pins on main controller, depending on configuration.
 #ifdef QUADMODE
@@ -49,7 +63,7 @@ const byte cTarsPin[] PROGMEM =
 #endif
 #endif
 
-// BUGBUG... using our wrapper serial
+// We are using our wrapper serial as to make more of the code shared
 WrapperSerial SSCSerial;
 
 //=============================================================================
@@ -355,11 +369,14 @@ void ServoDriver::GPSetSpeedMultiplyer(short sm)  // Set the Speed multiplier (1
 }
 #endif                                            // OPT_GPPLAYER
 
+
+
 //------------------------------------------------------------------------------------------
 //[BeginServoUpdate] Does whatever preperation that is needed to starrt a move of our servos
 //------------------------------------------------------------------------------------------
 void ServoDriver::BeginServoUpdate(void)          // Start the update
 {
+	g_fSSC32ServoChanged = false;	// assume nothing changed.
 }
 
 
@@ -371,6 +388,8 @@ void ServoDriver::BeginServoUpdate(void)          // Start the update
 #define cPFConst      592                         //old 650 ; 900*(1000/cPwmDiv)+cPFConst must always be 1500
 // A PWM/deg factor of 10,09 give cPwmDiv = 991 and cPFConst = 592
 // For a modified 5645 (to 180 deg travel): cPwmDiv = 1500 and cPFConst = 900.
+
+
 #ifdef c4DOF
 void ServoDriver::OutputServoInfoForLeg(byte LegIndex, short sCoxaAngle1, short sFemurAngle1, short sTibiaAngle1, short sTarsAngle1)
 #else
@@ -383,7 +402,7 @@ void ServoDriver::OutputServoInfoForLeg(byte LegIndex, short sCoxaAngle1, short 
 #ifdef c4DOF
     word    wTarsSSCV;                            //
 #endif
-
+	byte	bServoSaveIndex = LegIndex * NUMSERVOSPERLEG;
     //Update Right Legs
                                                   // If on xbee on hserial tell hserial to not processess...
     g_InputController.AllowControllerInterrupts(false);
@@ -426,25 +445,45 @@ void ServoDriver::OutputServoInfoForLeg(byte LegIndex, short sCoxaAngle1, short 
     }
 #endif
 #else
-    SSCSerial.print("#");
-    SSCSerial.print(pgm_read_byte(&cCoxaPin[LegIndex]), DEC);
-    SSCSerial.print("P");
-    SSCSerial.print(wCoxaSSCV, DEC);
-    SSCSerial.print("#");
-    SSCSerial.print(pgm_read_byte(&cFemurPin[LegIndex]), DEC);
-    SSCSerial.print("P");
-    SSCSerial.print(wFemurSSCV, DEC);
-    SSCSerial.print("#");
-    SSCSerial.print(pgm_read_byte(&cTibiaPin[LegIndex]), DEC);
-    SSCSerial.print("P");
-    SSCSerial.print(wTibiaSSCV, DEC);
+	if (g_awSSC32ServoPos[bServoSaveIndex] != wCoxaSSCV) 
+    {
+        SSCSerial.print("#");
+        SSCSerial.print(pgm_read_byte(&cCoxaPin[LegIndex]), DEC);
+        SSCSerial.print("P");
+        SSCSerial.print(wCoxaSSCV, DEC);
+        g_awSSC32ServoPos[bServoSaveIndex] = wCoxaSSCV;
+        g_fSSC32ServoChanged = true;
+    }
+	if (g_awSSC32ServoPos[bServoSaveIndex+1] != wFemurSSCV) 
+    {
+        SSCSerial.print("#");
+        SSCSerial.print(pgm_read_byte(&cFemurPin[LegIndex]), DEC);
+        SSCSerial.print("P");
+        SSCSerial.print(wFemurSSCV, DEC);
+        g_awSSC32ServoPos[bServoSaveIndex+1] = wFemurSSCV;
+        g_fSSC32ServoChanged = true;
+    }
+	if (g_awSSC32ServoPos[bServoSaveIndex+2] != wTibiaSSCV) 
+    {
+        SSCSerial.print("#");
+        SSCSerial.print(pgm_read_byte(&cTibiaPin[LegIndex]), DEC);
+        SSCSerial.print("P");
+        SSCSerial.print(wTibiaSSCV, DEC);
+        g_awSSC32ServoPos[bServoSaveIndex+2] = wTibiaSSCV;
+        g_fSSC32ServoChanged = true;
+    }
 #ifdef c4DOF
     if ((byte)pgm_read_byte(&cTarsLength[LegIndex]))
     {
-        SSCSerial.print("#");
-        SSCSerial.print(pgm_read_byte(&cTarsPin[LegIndex]), DEC);
-        SSCSerial.print("P");
-        SSCSerial.print(wTarsSSCV, DEC);
+        if (g_awSSC32ServoPos[bServoSaveIndex+3] != wTarsSSCV) 
+        {
+            SSCSerial.print("#");
+            SSCSerial.print(pgm_read_byte(&cTarsPin[LegIndex]), DEC);
+            SSCSerial.print("P");
+            SSCSerial.print(wTarsSSCV, DEC);
+            g_awSSC32ServoPos[bServoSaveIndex+3] = wTarsSSCV;
+            g_fSSC32ServoChanged = true;
+        }
     }
 #endif
 #endif
@@ -464,24 +503,25 @@ void ServoDriver::CommitServoDriver(word wMoveTime)
 #ifdef cSSC_BINARYMODE
     byte    abOut[3];
 #endif
-
+    if (g_fSSC32ServoChanged)       // only do the commit if we actually output something!
+    {
                                                   // If on xbee on hserial tell hserial to not processess...
-    g_InputController.AllowControllerInterrupts(false);
+        g_InputController.AllowControllerInterrupts(false);
 
 #ifdef cSSC_BINARYMODE
-    abOut[0] = 0xA1;
-    abOut[1] = wMoveTime >> 8;
-    abOut[2] = wMoveTime & 0xff;
-    SSCSerial.write(abOut, 3);
+        abOut[0] = 0xA1;
+        abOut[1] = wMoveTime >> 8;
+        abOut[2] = wMoveTime & 0xff;
+        SSCSerial.write(abOut, 3);
 #else
-    //Send <CR>
-    SSCSerial.print("T");
-    SSCSerial.println(wMoveTime, DEC);
+        //Send <CR>
+        SSCSerial.print("T");
+        SSCSerial.println(wMoveTime, DEC);
 #endif
 
-    g_InputController.AllowControllerInterrupts(true);
-    _fServosActive = true;                        // Remember we have actually output something to the servos...
-
+        g_InputController.AllowControllerInterrupts(true);
+        _fServosActive = true;                        // Remember we have actually output something to the servos...
+    }
 }
 
 
@@ -492,9 +532,9 @@ void ServoDriver::FreeServos(void)
 {
     if (_fServosActive)
     {
-                                                  //If on xbee on hserial tell hserial to not processess...
+        byte LegIndex;                           //If on xbee on hserial tell hserial to not processess...
         g_InputController.AllowControllerInterrupts(false);
-        for (byte LegIndex = 0; LegIndex < 32; LegIndex++)
+        for (LegIndex = 0; LegIndex < 32; LegIndex++)
         {
             SSCSerial.print("#");
             SSCSerial.print(LegIndex, DEC);
@@ -503,6 +543,10 @@ void ServoDriver::FreeServos(void)
         SSCSerial.print("T200\r");
         g_InputController.AllowControllerInterrupts(true);
         _fServosActive = false;                   // remember we turned off the servos...
+        
+        // Also clear away all saved servo positions as they are not valid any more
+        for (LegIndex = 0; LegIndex < NUMSERVOS; LegIndex++)
+        g_awSSC32ServoPos[LegIndex] = 0;	  // save away previous servo positions...
     }
 }
 
