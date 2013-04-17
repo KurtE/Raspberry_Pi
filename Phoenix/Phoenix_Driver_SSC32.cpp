@@ -176,6 +176,7 @@ int SSCRead (byte* pb, int cb, unsigned long ulTimeout, int EOL)
             {
                 return (int)(pb-pbIn);
             }
+            delayMicroseconds(100);	// don't just hang here...
         }
         *pb++ = (byte)ich;
         cb--;

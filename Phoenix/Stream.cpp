@@ -26,6 +26,7 @@ parsing functions based on TextFinder library by Michael Margolis
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
+#include <unistd.h>
 
 #define boolean bool
 extern unsigned long millis(void);
@@ -42,6 +43,7 @@ int Stream::timedRead()
     {
         c = read();
         if (c >= 0) return c;
+        usleep(50);
     } while(millis() - _startMillis < _timeout);
     return -1;                                    // -1 indicates timeout
 }
@@ -56,6 +58,7 @@ int Stream::timedPeek()
     {
         c = peek();
         if (c >= 0) return c;
+        usleep(50);
     } while(millis() - _startMillis < _timeout);
     return -1;                                    // -1 indicates timeout
 }

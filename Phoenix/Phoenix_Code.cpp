@@ -820,6 +820,7 @@ void loop(void)
             while (millis() < lTimeWaitEnd);
             DebugWrite(A1, LOW);
 #else
+#ifdef DEBUG_LOOP_TIMING
             long lDelay = max(lTimeWaitEnd-millis(), 1);
             if (DebuglDelay != lDelay )
             {
@@ -828,7 +829,7 @@ void loop(void)
                 DBGSerial.println(lDelay , DEC);
                 DebuglDelay = lDelay ;
             }
-
+#endif
             delay(max(lTimeWaitEnd-millis(), 1));
 #endif
 #ifdef DEBUG_X
