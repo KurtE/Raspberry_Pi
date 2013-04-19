@@ -36,7 +36,22 @@
 #define DBGSerial         DBGSerialWrapper
 
 // Define other optional compnents to be included or not...
+// Speach options
 #define OPT_ESPEAK
+
+// Else we can try to find by attributes
+// If VoiceName is defined it is used can be found by using espeak --voices command
+//#define ESPEAK_VOICENAME "en-french"
+
+// If language must be defined if you also wish to set gender or age...
+#define ESPEAK_LANGUAGE	"en-us"
+#define ESPEAK_GENDER	2		// 0=dont care, 1=male, 2=female
+#define ESPEAK_AGE		0		//0=dont care
+
+
+
+
+// Use PCM Sound to play notes
 #define OPT_PCMSOUND
 
 //===================================================================

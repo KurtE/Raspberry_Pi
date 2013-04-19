@@ -512,6 +512,7 @@ void setup()
 #ifdef DBGSerial
     DBGSerial.begin();                            // Special version for stdin/stdout
 #endif
+
     // Init our ServoDriver
     g_ServoDriver.Init();
 

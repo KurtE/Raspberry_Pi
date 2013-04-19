@@ -19,10 +19,64 @@ void*                   user_data;
 //t_espeak_callback 		*SynthCallback;
 espeak_PARAMETER        Parm;
 
-char Voice[] = {"default"};
+#if defined(ESPEAK_VOICENAME)
+static const char g_szVoice[] = {ESPEAK_VOICENAME};
+
+#elif defined(ESPEAK_LANGUAGE)
+#ifndef ESPEAK_GENDER
+#define ESPEAK_GENDER 0	// don't care
+#endif
+#ifndef ESPEAK_AGE
+#define ESPEAK_AGE 0		// don't care
+#endif
+#ifndef ESPEAK_VARIANT
+#define ESPEAK_VARIANT 0	// best fit
+#endif
+static const char g_szSpeakLang[]= {ESPEAK_LANGUAGE};
+//static const char g_szSpeakLang[]= {"en-us"};
+#endif
+static const char g_szDefaultVoice[] = {"default"};
+
 unsigned int unique_identifier;
 
 bool                    g_fSpeakInit = false;
+
+//-----------------------------------------------------------------------------
+// Data definitions
+//-----------------------------------------------------------------------------
+void InitSpeak()
+{
+    espeak_ERROR err;
+    
+    esoutput = AUDIO_OUTPUT_PLAYBACK;
+    espeak_Initialize(esoutput, Buflength, path, Options );
+#if defined(ESPEAK_VOICENAME)
+    err = espeak_SetVoiceByName(g_szVoice);
+    if (err != EE_OK) 
+    {
+        printf("Speak SetVoiceByProp failed %d\n", err);
+        espeak_SetVoiceByName(g_szDefaultVoice);
+    }
+
+#elif defined(ESPEAK_LANGUAGE)
+    espeak_VOICE voice;
+    voice.name = NULL;
+    voice.languages = g_szSpeakLang;
+    voice.identifier= NULL;
+    voice.age = ESPEAK_AGE;
+    voice.gender = ESPEAK_GENDER;
+    voice.variant = ESPEAK_VARIANT;
+    err = espeak_SetVoiceByProperties(&voice);
+    if (err != EE_OK) 
+    {
+        printf("Speak SetVoiceByProp failed %d\n", err);
+        espeak_SetVoiceByName(g_szDefaultVoice);
+    }
+#else    
+    espeak_SetVoiceByName(g_szDefaultVoice);
+#endif
+    g_fSpeakInit = true;
+}
 
 //-----------------------------------------------------------------------------
 // Data definitions
@@ -37,12 +91,7 @@ void Speak(const char *psz, bool fWait)
 #endif
     // See if we need to initialize.
     if (!g_fSpeakInit)
-    {
-        esoutput = AUDIO_OUTPUT_PLAYBACK;
-        espeak_Initialize(esoutput, Buflength, path, Options );
-        espeak_SetVoiceByName(Voice);
-        g_fSpeakInit = true;
-    }
+        InitSpeak();
     else
     {
         // if it is still playing cancel any active stuff...
@@ -58,7 +107,11 @@ void Speak(const char *psz, bool fWait)
     }
 }
 
+    
 
+//-----------------------------------------------------------------------------
+// EndSpeak - terminate our usage of espeak
+//-----------------------------------------------------------------------------
 void EndSpeak(void)
 {
     if (g_fSpeakInit)
