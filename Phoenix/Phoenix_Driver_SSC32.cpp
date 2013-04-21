@@ -498,7 +498,7 @@ void ServoDriver::OutputServoInfoForLeg(byte LegIndex, short sCoxaAngle1, short 
 //         allows us to once the previous update was completed to quickly
 //        get the next command to start
 //--------------------------------------------------------------------
-void ServoDriver::CommitServoDriver(word wMoveTime)
+boolean ServoDriver::CommitServoDriver(word wMoveTime)
 {
 #ifdef cSSC_BINARYMODE
     byte    abOut[3];
@@ -522,6 +522,7 @@ void ServoDriver::CommitServoDriver(word wMoveTime)
         g_InputController.AllowControllerInterrupts(true);
         _fServosActive = true;                        // Remember we have actually output something to the servos...
     }
+    return g_fSSC32ServoChanged;
 }
 
 

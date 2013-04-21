@@ -1,13 +1,17 @@
+lib:= LIBRARY
 Prog1:= THex3_Commander_SSC32
 Prog2:= THex3_DIY_SSC32
 
-Programs := $(Prog1) $(Prog2)
+Programs := $(lib) $(Prog1) $(Prog2)
 
 
 .PHONY: all $(Programs) 
 
 all: $(Programs)
 
+
+LIBRARY:
+	cd ../library; $(MAKE)
 
 THex3_Commander_SSC32:
 	$(MAKE) -f  makefile_THSC $(MAKECMDGOALS)
@@ -18,4 +22,4 @@ THex3_DIY_SSC32:
 clean:
 	$(MAKE) -f  makefile_THSC clean
 	$(MAKE) -f  makefile_THSX clean
-
+	cd ../library ; $(MAKE) clean

@@ -69,7 +69,10 @@
 #include "Hex_Cfg.h"
 #include "Phoenix.h"
 #include "CommanderEx.h"
+
+#ifdef OPT_ESPEAK
 #include "speak.h"
+#endif
 
 //[CONSTANTS]
 #ifdef OPT_GPPLAYER
@@ -89,7 +92,7 @@ enum
 };
 
 #ifdef OPT_ESPEAK
-#define SpeakStr(psz) Speak((psz), true)
+#define SpeakStr(psz) Speak.Speak((psz), true)
 extern "C"
 {
     // Move the Gait Names to program space...
@@ -222,7 +225,14 @@ void CommanderInputController::ControlInput(void)
     {
         // If we receive a valid message than turn robot on...
         g_InControlState.fRobotOn = true;
-
+        
+        // Experimenting with trying to detect when IDLE.  maybe set a state of
+        // of no button pressed and all joysticks are in the DEADBAND area...
+        g_InControlState.fControllerInUse = command.buttons 
+            || (abs(command.rightH) >= cTravelDeadZone)
+            || (abs(command.rightV) >= cTravelDeadZone)
+            || (abs(command.leftH) >= cTravelDeadZone)
+            || (abs(command.leftV) >= cTravelDeadZone);
         // [SWITCH MODES]
 
         // Cycle through modes...
@@ -494,7 +504,10 @@ void CommanderInputController::ControlInput(void)
         if (g_InControlState.fRobotOn)
         {
             if ((millis() - g_ulLastMsgTime) > ARBOTIX_TO)
+            {
+	        g_InControlState.fControllerInUse = true;	// make sure bypass is not used.
                 CommanderTurnRobotOff();
+            }
         }
     }
 }

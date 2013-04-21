@@ -1,11 +1,9 @@
-#define DEBUG
+//#define DEBUG
 /****************************************************************************
  * - DIY remote control XBee support file
  *
  ****************************************************************************/
 #include "ArduinoDefs.h"
-#include "Hex_Cfg.h"
-#include "Phoenix.h"
 #include "diyxbee.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +20,10 @@
 #include <stdarg.h>
 
 WrapperSerial XBeeSerial = WrapperSerial();
+
+#ifndef DoBackgroundProcess
+#define DoBackgroundProcess()
+#endif
 
 DIYSTATE g_diystate;
 #define XBEE_API_PH_SIZE    1                     // Changed Packet Header to just 1 byte - Type - we don't use sequence number anyway...

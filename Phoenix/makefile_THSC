@@ -7,29 +7,24 @@ SOURCES = \
 		Phoenix_Code.cpp \
 		Phoenix_Driver_SSC32.cpp \
 		Phoenix_Input_Commander.cpp \
-		CommanderEx.cpp \
-		Print.cpp \
-		Stream.cpp \
-		WrapperSerial.cpp \
-		msound.cpp \
-		speak.cpp
+		CommanderEx.cpp
 
 MAIN_OBJS:= $(subst .cpp,.o,$(SOURCES))
 
 MAIN_DEPS:= $(subst .cpp,.d,$(SOURCES))
 
 #~~~~~~~~~~~~~~~~~~~~ Include Directories ~~~~~~~~~~~~~~~~~~~~
-INCLUDE_DIRS = -I. -I/usr/include/espeak
+INCLUDE_DIRS = -I. -I../library -I/usr/include/espeak
 
 #~~~~~~~~~~~~~~~~~~~~ Library Directories ~~~~~~~~~~~~~~~~~~~~
-LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf
+LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../library
 
 #~~~~~~~~~~~~~~~~~~~~ Compiler Options ~~~~~~~~~~~~~~~~~~~~
 COMPILE_OPTS = -Wall -pedantic -g -O2 -fno-rtti -Wno-write-strings
 #COMPILE_OPTS = -Wall -pedantic -g -O2
 
 #~~~~~~~~~~~~~~~~~~~~ Linker Options ~~~~~~~~~~~~~~~~~~~~
-LDFLAGS = $(LIBRARY_DIRS) -lpthread -lespeak
+LDFLAGS = $(LIBRARY_DIRS) -lpthread -lespeak -lArduinoPort
 
 #~~~~~~~~~~~~~~~~~~~~ Toolchain Prefix ~~~~~~~~~~~~~~~~~~~~
 TCHAIN_PREFIX=arm-linux-gnueabihf-
@@ -44,7 +39,8 @@ all: begin gccversion build end
 #~~~~~~~~~~~~~~~~~~~~ build ~~~~~~~~~~~~~~~~~~~~
 build: $(MAIN_OUT)
 
-$(MAIN_OUT): $(MAIN_OBJS)
+# added specific dependence on my own library...
+$(MAIN_OUT): $(MAIN_OBJS) ../library/libArduinoPort.a
 	$(CXX) $(CXXFLAGS) $(MAIN_OBJS) -o $(MAIN_OUT) $(LDFLAGS)
 
 MSG_BEGIN = -------- begin --------
@@ -78,6 +74,6 @@ backup: clean
 include $(subst .cpp,.d,$(SOURCES))
 
 %.d: %.cpp
-	$(CC) -M $(CPPFLAGS) $< > $@.$$$$; \
+	$(CC) -M $(CXXFLAGS) $< > $@.$$$$; \
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;  \
 	rm -f $@.$$$$

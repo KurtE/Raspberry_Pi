@@ -13,77 +13,12 @@
 // Header Files
 //=============================================================================
 
-#define DEFINE_HEX_GLOBALS
-
-#include "Hex_Cfg.h"
-#include "Phoenix.h"
-#include "speak.h"
-
-//==============================================================================
-// First version for support of simiply using a simple speaker...
-//==============================================================================
-//==============================================================================
-//    SoundNoTimer - Quick and dirty tone function to try to output a frequency
-//            to a speaker for some simple sounds.
-//==============================================================================
-#ifdef SOUND_PIN
-void SoundNoTimer(unsigned long duration,  unsigned int frequency)
-{
-#ifdef __AVR__
-    volatile uint8_t *pin_port;
-    volatile uint8_t pin_mask;
-#else
-    volatile uint32_t *pin_port;
-    volatile uint16_t pin_mask;
-#endif
-    long toggle_count = 0;
-    long lusDelayPerHalfCycle;
-
-    // Set the pinMode as OUTPUT
-    pinMode(SOUND_PIN, OUTPUT);
-
-    pin_port = portOutputRegister(digitalPinToPort(SOUND_PIN));
-    pin_mask = digitalPinToBitMask(SOUND_PIN);
-
-    toggle_count = 2 * frequency * duration / 1000;
-    lusDelayPerHalfCycle = 1000000L/(frequency * 2);
-
-    // if we are using an 8 bit timer, scan through prescalars to find the best fit
-    while (toggle_count--)
-    {
-        // toggle the pin
-        *pin_port ^= pin_mask;
-
-        // delay a half cycle
-        delayMicroseconds(lusDelayPerHalfCycle);
-    }
-    *pin_port &= ~(pin_mask);                     // keep pin low after stop
-
-}
-
-
-void MSound(byte cNotes, ...)
-{
-    va_list ap;
-    unsigned int uDur;
-    unsigned int uFreq;
-    va_start(ap, cNotes);
-
-    while (cNotes > 0)
-    {
-        uDur = va_arg(ap, unsigned int);
-        uFreq = va_arg(ap, unsigned int);
-        SoundNoTimer(uDur, uFreq);
-        cNotes--;
-    }
-    va_end(ap);
-}
-
+#include "msound.h"
+#include "SDRFunctions.h"
 
 //==============================================================================
 // Use PCM sound on systems that support it.
 //==============================================================================
-#elif defined(OPT_PCMSOUND)
 #include <alsa/asoundlib.h>
 #include <math.h>
 static char *device = "default";                  /* playback device */
@@ -125,6 +60,18 @@ static unsigned int buffer_time = 500000;         /* ring buffer length in us */
 static unsigned int period_time = 10000;          /* period time in us */
 static snd_pcm_sframes_t period_size;
 
+static unsigned char g_bIDSDRMSound = 0xff;
+
+void MSoundRelease(void)
+{
+    // No Notes passed in, use this as a signal to close anything that is open...
+    if (g_PCMhandle)
+    {
+        snd_pcm_close(g_PCMhandle);
+        g_PCMhandle = 0;                          // clear out the handle
+    }
+}
+
 void MSound(byte cNotes, ...)
 {
     int err;
@@ -139,18 +86,18 @@ void MSound(byte cNotes, ...)
 #endif
     va_start(ap, cNotes);
 
-    if (cNotes)
+    // Open up the PCM...
+    if (!g_PCMhandle)
     {
-#ifdef OPT_ESPEAK
-        EndSpeak();                               // close off speach if open
-#endif
-        // Open up the PCM...
-        if (!g_PCMhandle)
-        {
-            /*if (!g_hwparams)*/ {
-            snd_pcm_hw_params_alloca(&g_hwparams);
-            snd_pcm_sw_params_alloca(&g_swparams);
-        }
+        // See if this is the first time through if so register our release function.
+        if (g_bIDSDRMSound == 0xff) 
+            g_bIDSDRMSound = SDRRegisterReleaseFunction(&MSoundRelease);
+            
+        // Tell our quick and dirty Sound registry stuff, that we want to be the current one...    
+        SDRSetCurrent(g_bIDSDRMSound);
+        
+        snd_pcm_hw_params_alloca(&g_hwparams);
+        snd_pcm_sw_params_alloca(&g_swparams);
         if ((err = snd_pcm_open(&g_PCMhandle, device, SND_PCM_STREAM_PLAYBACK, 0)) < 0)
         {
 #ifdef DEBUG_SOUND
@@ -160,7 +107,7 @@ void MSound(byte cNotes, ...)
             g_PCMhandle = 0;                      // clear out the handle
             return;
         }
-
+    
         // Now we need to set the paramters for this sound...
         if ((err = set_hwparams(g_PCMhandle, g_hwparams )) < 0)
         {
@@ -238,23 +185,10 @@ void MSound(byte cNotes, ...)
         printf("T: %li\n", millis()-ulStart);
 #endif
     }
-}
 
-
-else
-{
-    // No Notes passed in, use this as a signal to close anything that is open...
-    if (g_PCMhandle)
-    {
-        snd_pcm_close(g_PCMhandle);
-        g_PCMhandle = 0;                          // clear out the handle
-    }
-}
-
-
-va_end(ap);
+    va_end(ap);
 #ifdef DEBUG_SOUND
-printf("Return\n");
+    printf("Return\n");
 #endif
 }
 
@@ -424,12 +358,3 @@ int set_swparams(snd_pcm_t *handle, snd_pcm_sw_params_t *swparams)
     return 0;
 }
 
-
-#else
-//==============================================================================
-// else no sound support
-//==============================================================================
-void MSound(byte cNotes, ...)
-{
-}
-#endif

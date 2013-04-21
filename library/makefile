@@ -1,25 +1,32 @@
+#try to create a static library of code for me to use for different programs
 #~~~~~~~~~~~~~~~~~~~~ Output File Name ~~~~~~~~~~~~~~~~~~~~
-MAIN_OUT = testSSC32
+MAIN_OUT = libArduinoPort.a
 
 #~~~~~~~~~~~~~~~~~~~~ Source Files ~~~~~~~~~~~~~~~~~~~~
 SOURCES = \
-		testSSC32.cpp
+		Print.cpp \
+		Stream.cpp \
+		WrapperSerial.cpp \
+		msound.cpp \
+		speak.cpp \
+		SDRFunctions.cpp \
+		diyxbee.cpp
 
 MAIN_OBJS:= $(subst .cpp,.o,$(SOURCES))
 
 MAIN_DEPS:= $(subst .cpp,.d,$(SOURCES))
 
 #~~~~~~~~~~~~~~~~~~~~ Include Directories ~~~~~~~~~~~~~~~~~~~~
-INCLUDE_DIRS = -I. -I../library -I/usr/include/espeak
+INCLUDE_DIRS = -I. -I/usr/include/espeak
 
 #~~~~~~~~~~~~~~~~~~~~ Library Directories ~~~~~~~~~~~~~~~~~~~~
-LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../library
+LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf
 
 #~~~~~~~~~~~~~~~~~~~~ Compiler Options ~~~~~~~~~~~~~~~~~~~~
-COMPILE_OPTS = -pedantic -g -O2 -fno-rtti
+COMPILE_OPTS = -Wall -pedantic -g -O2 -fno-rtti -Wno-write-strings -DOPT_ESPEAK -DOPT_PCMSOUND
 
 #~~~~~~~~~~~~~~~~~~~~ Linker Options ~~~~~~~~~~~~~~~~~~~~
-LDFLAGS = $(LIBRARY_DIRS) -lpthread -lespeak -lArduinoPort
+LDFLAGS = $(LIBRARY_DIRS) -lpthread -lespeak
 
 #~~~~~~~~~~~~~~~~~~~~ Toolchain Prefix ~~~~~~~~~~~~~~~~~~~~
 TCHAIN_PREFIX=arm-linux-gnueabihf-
@@ -27,20 +34,17 @@ TCHAIN_PREFIX=arm-linux-gnueabihf-
 
 CXX = $(TCHAIN_PREFIX)g++
 CXXFLAGS = $(COMPILE_OPTS) $(INCLUDE_DIRS)
+AR = ar
+ARFLAGS = rcs
 
 #~~~~~~~~~~~~~~~~~~~~ all ~~~~~~~~~~~~~~~~~~~~
-all: LIBRARY begin gccversion build end
-
-#~~~~~~~~~~~~~~~~~~~~ library ~~~~~~~~~~~~~~~~~~~~
-LIBRARY:
-	cd ../library; $(MAKE)
-
+all: begin gccversion build end
 
 #~~~~~~~~~~~~~~~~~~~~ build ~~~~~~~~~~~~~~~~~~~~
 build: $(MAIN_OUT)
 
-$(MAIN_OUT): $(MAIN_OBJS) ../library/libArduinoPort.a
-	$(CXX) $(CXXFLAGS) $(MAIN_OBJS) -o $(MAIN_OUT) $(LDFLAGS)
+$(MAIN_OUT): $(MAIN_OBJS)
+	$(AR) $(ARFLAGS) $(MAIN_OUT) $(MAIN_OBJS)
 
 MSG_BEGIN = -------- begin --------
 MSG_END = --------  end  --------
@@ -61,10 +65,9 @@ gccversion:
 clean: begin clean_list end
 
 clean_list:
-	-rm $(MAIN_OBJS)
-	-rm $(MAIN_OUT)
-	-rm $(MAIN_DEPS)
-	-cd ../library ; make clean
+	-rm -f $(MAIN_OBJS)
+	-rm -f $(MAIN_OUT)
+	-rm -f $(MAIN_DEPS)
 
 #~~~~~~~~~~~~~~~~~~~~ backup ~~~~~~~~~~~~~~~~~~~~
 backup: clean
@@ -74,6 +77,6 @@ backup: clean
 include $(subst .cpp,.d,$(SOURCES))
 
 %.d: %.cpp
-	$(CC) -M $(CXXFLAGS) $< > $@.$$$$; \
+	$(CC) -M $(CPPFLAGS) $< > $@.$$$$; \
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;  \
 	rm -f $@.$$$$

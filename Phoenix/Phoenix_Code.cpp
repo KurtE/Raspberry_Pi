@@ -30,6 +30,10 @@
 #include "Hex_Cfg.h"
 #include "Phoenix.h"
 
+#ifdef OPT_ESPEAK
+#include "speak.h"
+#endif
+
 #define BalanceDivFactor CNT_LEGS                 //;Other values than 6 can be used, testing...CAUTION!! At your own risk ;)
 //#include <Wire.h>
 //#include <I2CEEProm.h>
@@ -475,6 +479,11 @@ byte            bExtraCycle;                      // Forcing some extra timed cy
 
 boolean        g_fRobotUpsideDown;                // Is the robot upside down?
 boolean        fRobotUpsideDownPrev;
+
+
+byte           g_cNoServoChanged = 0;             // Count of commits where none of the servos moved.
+#define CNT_NO_SERVO_CHANGE_IDLE    20            // 
+
 //=============================================================================
 // Function prototypes
 //=============================================================================
@@ -484,6 +493,7 @@ extern void SingleLegControl(void);
 extern void GaitSeq(void);
 extern void BalanceBody(void);
 extern void CheckAngles();
+extern void InitVoice();
 
 extern void    PrintSystemStuff(void);            // Try to see why we fault...
 
@@ -512,6 +522,8 @@ void setup()
 #ifdef DBGSerial
     DBGSerial.begin();                            // Special version for stdin/stdout
 #endif
+
+    InitVoice();                                 // Lets try to initialize voices if needed.
 
     // Init our ServoDriver
     g_ServoDriver.Init();
@@ -604,6 +616,7 @@ void loop(void)
     }
     WriteOutputs();                               // Write Outputs
 
+
     // We should be able to minimize processor usage when the robot is not logically on
     // or was not on before this call...
     if (g_InControlState.fPrev_RobotOn || g_InControlState.fPrev_RobotOn)
@@ -646,6 +659,18 @@ void loop(void)
         if (g_ServoDriver.FIsGPSeqActive())
             return;                               // go back to process the next message
 #endif
+        if (g_InControlState.fControllerInUse)
+            g_cNoServoChanged = 0;                    // Reset the counter...
+
+        else if (g_cNoServoChanged >= CNT_NO_SERVO_CHANGE_IDLE)
+        {
+            // If we have not output anything for a long time and it does not look like
+            // The user is doing anything, maybe we can stop processing...
+            DoBackgroundProcess();
+            delay(20);
+            return; // try bailing from here...
+            
+        }
 
         //Single leg control
         SingleLegControl ();
@@ -869,7 +894,11 @@ void loop(void)
 #endif
         // Only do commit if we are actually doing something...
         DebugToggle(A2);
-        g_ServoDriver.CommitServoDriver(ServoMoveTime);
+        if (g_ServoDriver.CommitServoDriver(ServoMoveTime))
+            g_cNoServoChanged = 0;  // Count of commits that no servo positions changed
+        else if (g_cNoServoChanged < CNT_NO_SERVO_CHANGE_IDLE)
+            g_cNoServoChanged++;    // increment our count
+        
 
     }
     else
@@ -2129,6 +2158,31 @@ void AdjustLegPositionsToBodyHeight(void)
 #endif                                        // CNT_HEX_INITS
 
 }
+
+#if defined(ESPEAK_VOICENAME)
+static const char	g_szVoiceName[] = {ESPEAK_VOICENAME};
+#elif defined(ESPEAK_LANGUAGE)
+static const char	g_szVoiceLanguage[] = {ESPEAK_LANGUAGE};
+#ifndef ESPEAK_GENDER
+# define ESPEAK_GENDER 0
+#endif
+#endif
+//--------------------------------------------------------------------
+// InitVoice
+//--------------------------------------------------------------------
+void InitVoice()
+{
+#ifdef OPT_ESPEAK
+
+
+#if defined(ESPEAK_VOICENAME)
+    Speak.SetVoiceByName(g_szVoiceName);
+#elif defined(ESPEAK_LANGUAGE)
+    Speak.SetVoiceByProperties(g_szVoiceLanguage, ESPEAK_GENDER);
+#endif
+#endif
+}
+
 
 
 #ifdef OPT_TERMINAL_MONITOR

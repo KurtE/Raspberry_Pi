@@ -54,149 +54,150 @@ void *Commander::XBeeThreadProc(void *pv)
     // We will do all of the stuff to intialize the serial port plus we will spawn off our thread.
     struct termios tc;
 
-    if ((pcmdr->fd = open(pcmdr->_pszDevice, O_RDWR | O_NOCTTY | O_SYNC /* |  O_NONBLOCK */)) == -1) {
-    printf("Open Failed\n");
-    return false;
-}
-
-
-if ((pcmdr->pfile = fdopen(pcmdr->fd, "r+")) == NULL)
-{
-    return false;
-}
-
-
-setvbuf(pcmdr->pfile, NULL, _IONBF, BUFSIZ);
-fflush(pcmdr->pfile);
-
-if (tcgetattr(pcmdr->fd, &tc))
-{
-    perror("tcgetattr()");
-    return false;
-}
-
-
-/* input flags */
-tc.c_iflag &= ~ IGNBRK;                           /* enable ignoring break */
-tc.c_iflag &= ~(IGNPAR | PARMRK);                 /* disable parity checks */
-tc.c_iflag &= ~ INPCK;                            /* disable parity checking */
-tc.c_iflag &= ~ ISTRIP;                           /* disable stripping 8th bit */
-tc.c_iflag &= ~(INLCR | ICRNL);                   /* disable translating NL <-> CR */
-tc.c_iflag &= ~ IGNCR;                            /* disable ignoring CR */
-tc.c_iflag &= ~(IXON | IXOFF);                    /* disable XON/XOFF flow control */
-/* output flags */
-tc.c_oflag &= ~ OPOST;                            /* disable output processing */
-tc.c_oflag &= ~(ONLCR | OCRNL);                   /* disable translating NL <-> CR */
-/* not for FreeBSD */
-tc.c_oflag &= ~ OFILL;                            /* disable fill characters */
-/* control flags */
-tc.c_cflag |=   CLOCAL;                           /* prevent changing ownership */
-tc.c_cflag |=   CREAD;                            /* enable reciever */
-tc.c_cflag &= ~ PARENB;                           /* disable parity */
-tc.c_cflag &= ~ CSTOPB;                           /* disable 2 stop bits */
-tc.c_cflag &= ~ CSIZE;                            /* remove size flag... */
-tc.c_cflag |=   CS8;                              /* ...enable 8 bit characters */
-tc.c_cflag |=   HUPCL;                            /* enable lower control lines on close - hang up */
-#ifdef XBEE_NO_RTSCTS
-tc.c_cflag &= ~ CRTSCTS;                          /* disable hardware CTS/RTS flow control */
-#else
-tc.c_cflag |=   CRTSCTS;                          /* enable hardware CTS/RTS flow control */
-#endif
-/* local flags */
-tc.c_lflag &= ~ ISIG;                             /* disable generating signals */
-tc.c_lflag &= ~ ICANON;                           /* disable canonical mode - line by line */
-tc.c_lflag &= ~ ECHO;                             /* disable echoing characters */
-tc.c_lflag &= ~ ECHONL;                           /* ??? */
-tc.c_lflag &= ~ NOFLSH;                           /* disable flushing on SIGINT */
-tc.c_lflag &= ~ IEXTEN;                           /* disable input processing */
-
-/* control characters */
-memset(tc.c_cc,0,sizeof(tc.c_cc));
-
-/* set i/o baud rate */
-if (cfsetspeed(&tc, pcmdr->_baud))
-{
-    perror("cfsetspeed()");
-    return false;
-}
-
-
-if (tcsetattr(pcmdr->fd, TCSAFLUSH, &tc))
-{
-    perror("tcsetattr()");
-    return false;
-}
-
-
-/* enable input & output transmission */
-if (tcflow(pcmdr->fd, TCOON | TCION))
-{
-    perror("tcflow()");
-    return false;
-}
-
-
-fflush(pcmdr->pfile);                             // again discard anything we have not read...
-
-//    printf("Thread Init\n");
-
-// May want to add end code... But for now don't have any defined...
-int ch;
-for(;;)
-{
-    // Lets try using select to block our thread until we have some input available...
-    FD_ZERO(&readfs);
-    FD_SET(pcmdr->fd, &readfs);                   // Make sure we are set to wait for our descriptor
-    tv.tv_sec = 0;
-    tv.tv_usec = 250000;                          // 1/4 of a second...
-                                                  // wait until some input is available...
-    select(pcmdr->fd + 1, &readfs, NULL, NULL, &tv);
-
-    while((ch = getc(pcmdr->pfile)) != EOF)
+    if ((pcmdr->fd = open(pcmdr->_pszDevice, O_RDWR | O_NOCTTY | O_SYNC /* |  O_NONBLOCK */)) == -1) 
     {
-        if(pcmdr->index == -1)                    // looking for new packet
+        printf("Open Failed\n");
+        return false;
+    }
+
+
+    if ((pcmdr->pfile = fdopen(pcmdr->fd, "r+")) == NULL)
+    {
+        return false;
+    }
+
+
+    setvbuf(pcmdr->pfile, NULL, _IONBF, BUFSIZ);
+    fflush(pcmdr->pfile);
+
+    if (tcgetattr(pcmdr->fd, &tc))
+    {
+        perror("tcgetattr()");
+        return false;
+    }
+
+
+    /* input flags */
+    tc.c_iflag &= ~ IGNBRK;                           /* enable ignoring break */
+    tc.c_iflag &= ~(IGNPAR | PARMRK);                 /* disable parity checks */
+    tc.c_iflag &= ~ INPCK;                            /* disable parity checking */
+    tc.c_iflag &= ~ ISTRIP;                           /* disable stripping 8th bit */
+    tc.c_iflag &= ~(INLCR | ICRNL);                   /* disable translating NL <-> CR */
+    tc.c_iflag &= ~ IGNCR;                            /* disable ignoring CR */
+    tc.c_iflag &= ~(IXON | IXOFF);                    /* disable XON/XOFF flow control */
+    /* output flags */
+    tc.c_oflag &= ~ OPOST;                            /* disable output processing */
+    tc.c_oflag &= ~(ONLCR | OCRNL);                   /* disable translating NL <-> CR */
+    /* not for FreeBSD */
+    tc.c_oflag &= ~ OFILL;                            /* disable fill characters */
+    /* control flags */
+    tc.c_cflag |=   CLOCAL;                           /* prevent changing ownership */
+    tc.c_cflag |=   CREAD;                            /* enable reciever */
+    tc.c_cflag &= ~ PARENB;                           /* disable parity */
+    tc.c_cflag &= ~ CSTOPB;                           /* disable 2 stop bits */
+    tc.c_cflag &= ~ CSIZE;                            /* remove size flag... */
+    tc.c_cflag |=   CS8;                              /* ...enable 8 bit characters */
+    tc.c_cflag |=   HUPCL;                            /* enable lower control lines on close - hang up */
+    #ifdef XBEE_NO_RTSCTS
+    tc.c_cflag &= ~ CRTSCTS;                          /* disable hardware CTS/RTS flow control */
+    #else
+    tc.c_cflag |=   CRTSCTS;                          /* enable hardware CTS/RTS flow control */
+    #endif
+    /* local flags */
+    tc.c_lflag &= ~ ISIG;                             /* disable generating signals */
+    tc.c_lflag &= ~ ICANON;                           /* disable canonical mode - line by line */
+    tc.c_lflag &= ~ ECHO;                             /* disable echoing characters */
+    tc.c_lflag &= ~ ECHONL;                           /* ??? */
+    tc.c_lflag &= ~ NOFLSH;                           /* disable flushing on SIGINT */
+    tc.c_lflag &= ~ IEXTEN;                           /* disable input processing */
+
+    /* control characters */
+    memset(tc.c_cc,0,sizeof(tc.c_cc));
+
+    /* set i/o baud rate */
+    if (cfsetspeed(&tc, pcmdr->_baud))
+    {
+        perror("cfsetspeed()");
+        return false;
+    }
+
+
+    if (tcsetattr(pcmdr->fd, TCSAFLUSH, &tc))
+    {
+        perror("tcsetattr()");
+        return false;
+    }
+
+
+    /* enable input & output transmission */
+    if (tcflow(pcmdr->fd, TCOON | TCION))
+    {
+        perror("tcflow()");
+        return false;
+    }
+
+
+    fflush(pcmdr->pfile);                             // again discard anything we have not read...
+
+    //    printf("Thread Init\n");
+
+    // May want to add end code... But for now don't have any defined...
+    int ch;
+    for(;;)
+    {
+        // Lets try using select to block our thread until we have some input available...
+        FD_ZERO(&readfs);
+        FD_SET(pcmdr->fd, &readfs);                   // Make sure we are set to wait for our descriptor
+        tv.tv_sec = 0;
+        tv.tv_usec = 250000;                          // 1/4 of a second...
+                                                      // wait until some input is available...
+        select(pcmdr->fd + 1, &readfs, NULL, NULL, &tv);
+
+        while((ch = getc(pcmdr->pfile)) != EOF)
         {
-            if(ch == 0xff)
+            if(pcmdr->index == -1)                    // looking for new packet
             {
-                pcmdr->index = 0;
-                pcmdr->checksum = 0;
+                if(ch == 0xff)
+                {
+                    pcmdr->index = 0;
+                    pcmdr->checksum = 0;
+                }
             }
-        }
-        else if(pcmdr->index == 0)
-        {
-            pcmdr->bInBuf[pcmdr->index] = (unsigned char) ch;
-            if(pcmdr->bInBuf[pcmdr->index] != 0xff)
+            else if(pcmdr->index == 0)
             {
+                pcmdr->bInBuf[pcmdr->index] = (unsigned char) ch;
+                if(pcmdr->bInBuf[pcmdr->index] != 0xff)
+                {
+                    pcmdr->checksum += ch;
+                    pcmdr->index++;
+                }
+            }
+            else
+            {
+                pcmdr->bInBuf[pcmdr->index] = (unsigned char) ch;
                 pcmdr->checksum += ch;
                 pcmdr->index++;
-            }
-        }
-        else
-        {
-            pcmdr->bInBuf[pcmdr->index] = (unsigned char) ch;
-            pcmdr->checksum += ch;
-            pcmdr->index++;
-            if(pcmdr->index == 7)                 // packet complete
-            {
-                if(pcmdr->checksum%256 == 255)
+                if(pcmdr->index == 7)                 // packet complete
                 {
-                    // Lets grab our mutex to keep things consistent
-                    pthread_mutex_lock(&pcmdr->lock);
-                    for (int i=0; i < 6; i++)
-                        pcmdr->vals[i] = pcmdr->bInBuf[i];
-                    pcmdr->fValidPacket = true;
-                    pthread_mutex_unlock(&pcmdr->lock);
+                    if(pcmdr->checksum%256 == 255)
+                    {
+                        // Lets grab our mutex to keep things consistent
+                        pthread_mutex_lock(&pcmdr->lock);
+                        for (int i=0; i < 6; i++)
+                            pcmdr->vals[i] = pcmdr->bInBuf[i];
+                        pcmdr->fValidPacket = true;
+                        pthread_mutex_unlock(&pcmdr->lock);
+                    }
+                    pcmdr->index = -1;                // Say we are ready to start looking for start of next message...
                 }
-                pcmdr->index = -1;                // Say we are ready to start looking for start of next message...
             }
         }
+        // If we get to here try sleeping for a little time
+        usleep(1000);                                 // Note: we could maybe simply block the thread until input available!
     }
-    // If we get to here try sleeping for a little time
-    usleep(1000);                                 // Note: we could maybe simply block the thread until input available!
-}
 
 
-return 0;
+    return 0;
 }
 
 

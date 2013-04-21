@@ -1,9 +1,10 @@
 #~~~~~~~~~~~~~~~~~~~~ Output File Name ~~~~~~~~~~~~~~~~~~~~
-MAIN_OUT = testSSC32
+MAIN_OUT = testRClaw
 
 #~~~~~~~~~~~~~~~~~~~~ Source Files ~~~~~~~~~~~~~~~~~~~~
 SOURCES = \
-		testSSC32.cpp
+		testRClaw.cpp \
+		RoboClaw.cpp
 
 MAIN_OBJS:= $(subst .cpp,.o,$(SOURCES))
 
@@ -29,6 +30,7 @@ CXX = $(TCHAIN_PREFIX)g++
 CXXFLAGS = $(COMPILE_OPTS) $(INCLUDE_DIRS)
 
 #~~~~~~~~~~~~~~~~~~~~ all ~~~~~~~~~~~~~~~~~~~~
+
 all: LIBRARY begin gccversion build end
 
 #~~~~~~~~~~~~~~~~~~~~ library ~~~~~~~~~~~~~~~~~~~~
@@ -37,6 +39,8 @@ LIBRARY:
 
 
 #~~~~~~~~~~~~~~~~~~~~ build ~~~~~~~~~~~~~~~~~~~~
+
+
 build: $(MAIN_OUT)
 
 $(MAIN_OUT): $(MAIN_OBJS) ../library/libArduinoPort.a

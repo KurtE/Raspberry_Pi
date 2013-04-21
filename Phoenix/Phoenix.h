@@ -161,6 +161,7 @@ typedef struct _InControlState
 {
     boolean       fRobotOn;                       //Switch to turn on Phoenix
     boolean       fPrev_RobotOn;                  //Previous loop state
+    boolean       fControllerInUse;               // Does it look like the controller is activly being used
     //Body position
     COORD3D       BodyPos;
     COORD3D        BodyRotOffset;                 // Body rotation offset;
@@ -185,7 +186,7 @@ typedef struct _InControlState
     //[TIMING]
     byte          InputTimeDelay;                 //Delay that depends on the input to get the "sneaking" effect
     word          SpeedControl;                   //Adjustible Delay
-    byte       ForceGaitStepCnt;                  // new to allow us to force a step even when not moving
+    byte          ForceGaitStepCnt;               // new to allow us to force a step even when not moving
 } INCONTROLSTATE;
 
 //==============================================================================
@@ -217,7 +218,7 @@ class ServoDriver
 #else
         void            OutputServoInfoForLeg(byte LegIndex, short sCoxaAngle1, short sFemurAngle1, short sTibiaAngle1);
 #endif
-        void            CommitServoDriver(word wMoveTime);
+        boolean         CommitServoDriver(word wMoveTime);
         void            FreeServos(void);
 
         // Allow for background process to happen...
