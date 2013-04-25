@@ -84,6 +84,9 @@ It will prompt you for some stuff...
 Then to make a super user: 
 sudo adduser kurt sudo
 
+if you wish to make the new user act like the user pi, as with regards to sudo command, you can edit the information:
+sudo nano /etc/sudoerrs
+
 ---------------------------------------------------------------------------------------------------------------------
 
 On this 2nd Pi I am trying a different USB Wifi adapter that has an external 5dbi gain antenna 
@@ -108,6 +111,8 @@ sudo apt-get install libespeak-dev
 Also the Phoenix code base now has the capability of outputting tones to the speacker using PCM.  To build
 using this capability you will need the appropriate header files and the like:  
 sudo apt-get libasound2-dev
+Note: this maybe should be:
+sudo apt-get install libasound2 
 
 
 Note: you should then try to configure espeak and see if you can get it to work. More information
@@ -142,6 +147,19 @@ ls -l /dev/ttyXBEE
 I see something like:
 lrwxrwxrwx 1 root root 7 Dec 31  1969 /dev/ttyXBEE -> ttyUSB0
 ---------------------------------------------------------------------------------------------------------------------
+Other notes: 
+Many overclock their RPI up from the default 700mhz up to 1000mhz to do this:
+sudo nano /boot/config.txt
+add or uncomment lines:
+arm_freq=1000
+sdram_freq+500 
+
+More details up at: http://www.jeremymorgan.com/tutorials/raspberry-pi/how-to-overclock-raspberry-pi/ and
+http://raspberrypi.stackexchange.com/questions/1219/how-do-i-determine-the-current-mhz
+
+
+
+
 
 
 

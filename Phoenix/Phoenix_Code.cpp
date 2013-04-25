@@ -601,7 +601,7 @@ void setup()
 //=============================================================================
 // Loop: the main arduino main Loop function
 //=============================================================================
-
+//int idleCnt = 0;
 void loop(void)
 {
     //Start time
@@ -879,7 +879,14 @@ void loop(void)
         else 
         {
             // Ok we got here and everything is 0, maybe we should sleep some???
-            delay(10);	// Should not hurt to wait for a little here?
+            //delay(10);	// Should not hurt to wait for a little here?
+            delay(max(lTimerStart + PrevServoMoveTime - millis(), 1));  // See if moving using the timing of above...
+//            DBGSerial.print(".");
+//            if (idleCnt++ >= 50) 
+//            {
+//            	DBGSerial.println("");
+//              idleCnt = 0;
+//            }
         }
 #ifdef DEBUG_X
         if (g_fDebugOutput)
