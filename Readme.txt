@@ -157,6 +157,15 @@ sdram_freq+500
 More details up at: http://www.jeremymorgan.com/tutorials/raspberry-pi/how-to-overclock-raspberry-pi/ and
 http://raspberrypi.stackexchange.com/questions/1219/how-do-i-determine-the-current-mhz
 
+More details about using the RPICONFIG and warnings about corrupting SDCards up at:
+http://elinux.org/RPiconfig#Overclocking_options
+
+
+---------------------------------------------------------------------------------------------------------------------
+Streaming video:
+With the webcam I am playing around with the mjpg-streamer to stream from Pi to PC...
+Instructions on how to do this is up at: 
+http://www.instructables.com/id/Create-an-internet-controlled-robot-using-Livebots/step5/Get-the-webcam-streamer-for-Raspberry-Pi/
 
 
 
