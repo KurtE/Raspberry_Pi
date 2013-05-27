@@ -1,9 +1,9 @@
 #~~~~~~~~~~~~~~~~~~~~ Output File Name ~~~~~~~~~~~~~~~~~~~~
-MAIN_OUT = testRClaw
+MAIN_OUT = rover
 
 #~~~~~~~~~~~~~~~~~~~~ Source Files ~~~~~~~~~~~~~~~~~~~~
 SOURCES = \
-		testRClaw.cpp 
+		Rover.cpp 
 
 MAIN_OBJS:= $(subst .cpp,.o,$(SOURCES))
 
@@ -14,7 +14,12 @@ INCLUDE_DIRS = -I. -I../library
 
 
 #~~~~~~~~~~~~~~~~~~~~ Library Directories ~~~~~~~~~~~~~~~~~~~~
+ifeq ($(OSTYPE),linux-gnueabi)
 LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../library
+else
+LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../library
+endif
+
 
 #~~~~~~~~~~~~~~~~~~~~ Compiler Options ~~~~~~~~~~~~~~~~~~~~
 COMPILE_OPTS = -pedantic -g -O2 -fno-rtti

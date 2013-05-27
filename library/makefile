@@ -4,32 +4,47 @@ MAIN_OUT = libArduinoPort.a
 
 #~~~~~~~~~~~~~~~~~~~~ Source Files ~~~~~~~~~~~~~~~~~~~~
 SOURCES = \
+		Wiring.cpp \
 		Print.cpp \
 		Stream.cpp \
 		WrapperSerial.cpp \
+		CommanderEx.cpp \
+		diyxbee.cpp \
+		RoboClaw.cpp
+ifeq ($(OSTYPE),linux-gnueabihf)
+# more files currently on the Raspberry PI
+SOURCES = $(SOURCES) \
 		msound.cpp \
 		speak.cpp \
-		SDRFunctions.cpp \
-		diyxbee.cpp
+		SDRFunctions.cpp 
+endif
 
 MAIN_OBJS:= $(subst .cpp,.o,$(SOURCES))
 
 MAIN_DEPS:= $(subst .cpp,.d,$(SOURCES))
 
 #~~~~~~~~~~~~~~~~~~~~ Include Directories ~~~~~~~~~~~~~~~~~~~~
+ifeq ($(OSTYPE),linux-gnueabi)
+INCLUDE_DIRS = -I.
+else
 INCLUDE_DIRS = -I. -I/usr/include/espeak
+endif
 
 #~~~~~~~~~~~~~~~~~~~~ Library Directories ~~~~~~~~~~~~~~~~~~~~
-LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf
 
 #~~~~~~~~~~~~~~~~~~~~ Compiler Options ~~~~~~~~~~~~~~~~~~~~
-COMPILE_OPTS = -Wall -pedantic -g -O2 -fno-rtti -Wno-write-strings -DOPT_ESPEAK -DOPT_PCMSOUND
+COMPILE_OPTS = -Wall -pedantic -g -O2 -fno-rtti -Wno-write-strings
 
 #~~~~~~~~~~~~~~~~~~~~ Linker Options ~~~~~~~~~~~~~~~~~~~~
-LDFLAGS = $(LIBRARY_DIRS) -lpthread -lespeak
 
 #~~~~~~~~~~~~~~~~~~~~ Toolchain Prefix ~~~~~~~~~~~~~~~~~~~~
+ifeq ($(OSTYPE),linux-gnueabi)
+#BBBk
+TCHAIN_PREFIX=arm-angstrom-linux-gnueabi-
+else
+#RPI
 TCHAIN_PREFIX=arm-linux-gnueabihf-
+endif
 #TCHAIN_PREFIX=x86_64-linux-gnu-
 
 CXX = $(TCHAIN_PREFIX)g++

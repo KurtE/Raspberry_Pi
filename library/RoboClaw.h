@@ -127,7 +127,7 @@ public:
 	void WriteNVM(uint8_t address);
 	
 private:
-	void write_n(uint8_t byte, ...);
+	void write_n(uint8_t b, ...);
 	int	 read(uint32_t ulTimeout);
 	uint32_t Read4_1(uint8_t address, uint8_t cmd, uint8_t *status,bool *valid);
 	uint16_t Read2(uint8_t address,uint8_t cmd,bool *valid);
