@@ -1,10 +1,14 @@
-Warning, this is a Work In Progress!  There are no warrantees or Guarantees 
+# Warning
+This is a Work In Progress!  There are no warrantees or Guarantees 
 of any type that this code is useable for anything.  But I hope it is…
 
 This set of directories are some test programs as well as some code for some
-different robots, that I am trying out on the Raspberry Pi.  Note: I am in no
-way an expert on Linux and what little Unix experience I have is from quite
-a long time ago.
+different robots, that I am trying out on the Raspberry Pi (RPI).  
+
+Also recently I started to adapt this code to work with the BeagleBone Black (BBBk)
+
+Note: I am in no way an expert on Linux and what little Unix experience I 
+have is from quite a long time ago.
 
 At some point I will probably merge the code back into the main code bases
 That I have for those robots.  Example the Phoenix code may get merged back
@@ -19,7 +23,13 @@ good information up on a thread on Trossenrobotics.com
 In case it helps anyone, here is some information I put together (up on Lynxmotion Thread), when
 I was setting up my second Pi to run this code.
 
----------------------------------------------------------------------------------------------------------------------
+Likewise I have a thread talking about starting to work with the BeagleBone Black up on 
+Trossen Robotics: http://forums.trossenrobotics.com/showthread.php?6158-BeagleBone-Black-starting-to-play...
+
+
+
+# Quick Start Guide
+
 First link to Quick start: http://www.raspberrypi.org/quick-start-guide
 
 Next Initial information from Kevin that I used to do some initial setup.
@@ -54,7 +64,7 @@ sudo rpi-update
 
 The above will pretty much get your RPI up to date with all the latest and greatest.
 
----------------------------------------------------------------------------------------------------------------------
+## Putty and WinSCP
 
 Also if setting up a PC to talk to a PI through the network, more information from Kevin:
 So for file transfer I use WinSCP. It's a nice little GUI for simple FTP. I still code on my PC 
@@ -69,7 +79,7 @@ http://www.chiark.greenend.org.uk/~sgtatham/putty/download.html
 
 As long as you are comfortable with a terminal this should work fine.
 
----------------------------------------------------------------------------------------------------------------------
+## Configure Raspberry Pi
 
 Note: On the first boot, I also use the configuration program, to resize the main partition to
 the size of the SD card, plus time zone, keyboard type... If I missed changing anything can always 
@@ -87,7 +97,7 @@ sudo adduser kurt sudo
 if you wish to make the new user act like the user pi, as with regards to sudo command, you can edit the information:
 sudo nano /etc/sudoerrs
 
----------------------------------------------------------------------------------------------------------------------
+## Setup WiFI on RPI
 
 On this 2nd Pi I am trying a different USB Wifi adapter that has an external 5dbi gain antenna 
 ( http://www.amazon.com/GMYLE-Wireless-80 ... pd_cp_pc_0 ) 
@@ -96,37 +106,7 @@ up and working with my network. This time I simply had the GUI up (startX) and r
  program on the desktop and was able to see my network, choose the right AP, entered in the WPA key
  and so far it appears to work  
 
----------------------------------------------------------------------------------------------------------------------
-
-Side note: made progress in being able to do speech output from my Phoenix Code.
-
-I have been playing around with installing everything necessary to be able to install my Phoenix code 
-on this Pi and be able to compile it. I installed it by using the following commands:
-
-First currently code is dependent on using espeak code. Will probably make this optional later... 
-To install the necessary stuff you need to do something like:
-sudo apt-get install espeak
-sudo apt-get install libespeak-dev
-
-Also the Phoenix code base now has the capability of outputting tones to the speacker using PCM.  To build
-using this capability you will need the appropriate header files and the like:  
-sudo apt-get libasound2-dev
-Note: this maybe should be:
-sudo apt-get install libasound2 
-
-
-Note: you should then try to configure espeak and see if you can get it to work. More information
-earlier in this thread, but look at the data up at the link:  http://elinux.org/RPi_Text_to_Speech_%28Speech_Synthesis%29
-
-Then you can copy or git the sources that I have up on github. The commands I did to do this is:
-cd ~
-mkdir git
-cd git
- git clone git://github.com/KurtE/Raspberry_Pi 
-cd Raspberry_Pi/Phoenix 
-make
-
----------------------------------------------------------------------------------------------------------------------
+## Setup tty Device on RPI
 
 Also My code is setup to use an XBee and an SSC-32, both of which connect up as USB devices.  I did not want my
 code to have to depend on the order the devices are added so I wished to setup rules to create an alias for these devices
@@ -146,8 +126,62 @@ ls -l /dev/ttyXBEE
 
 I see something like:
 lrwxrwxrwx 1 root root 7 Dec 31  1969 /dev/ttyXBEE -> ttyUSB0
----------------------------------------------------------------------------------------------------------------------
-Other notes: 
+
+
+## Setup TTy Device on BBBk
+
+I can also use the same type of setup on the BBBk, but in addition to this, the BBBk has multiple 
+Usarts available on expansion connectors P8/P9.  However to use these, you need to update the device
+tree.  I will put more information in here on how to do that, including files I use to update.
+More information up on: http://blog.pignology.net/2013/05/getting-uart2-devttyo1-working-on.html
+
+# Download and Build this code.
+
+Then you can copy or git the sources that I have up on github. The commands I did to do this is:
+cd ~
+mkdir git
+cd git
+ git clone git://github.com/KurtE/Raspberry_Pi 
+cd Raspberry_Pi/Phoenix 
+make
+
+# PCM Sound and ESpeak
+
+I want some form of sound capability on my robots, to help with different things like simply 
+acknowledgments and also fun to play with speech.  There is now code in the library directory for
+doing this.
+
+
+I have been playing around with installing everything necessary to be able to install my Phoenix code 
+on this Pi and be able to compile it. I installed it by using the following commands:
+
+## Setup for Raspberry Pi
+First currently code is dependent on using espeak code. Will probably make this optional later... 
+To install the necessary stuff you need to do something like:
+sudo apt-get install espeak
+sudo apt-get install libespeak-dev
+
+Also the Phoenix code base now has the capability of outputting tones to the speacker using PCM.  To build
+using this capability you will need the appropriate header files and the like:  
+sudo apt-get libasound2-dev
+Note: this maybe should be:
+sudo apt-get install libasound2 
+
+
+Note: you should then try to configure espeak and see if you can get it to work. More information
+earlier in this thread, but look at the data up at the link:  http://elinux.org/RPi_Text_to_Speech_%28Speech_Synthesis%29
+
+
+## Setup for BeagleBone Black
+
+
+
+# Other notes
+
+## Raspberry Pi
+
+### Overclock
+
 Many overclock their RPI up from the default 700mhz up to 1000mhz to do this:
 sudo nano /boot/config.txt
 add or uncomment lines:
@@ -160,15 +194,51 @@ http://raspberrypi.stackexchange.com/questions/1219/how-do-i-determine-the-curre
 More details about using the RPICONFIG and warnings about corrupting SDCards up at:
 http://elinux.org/RPiconfig#Overclocking_options
 
+## BeagleBone Black
 
----------------------------------------------------------------------------------------------------------------------
-Streaming video:
+The only sound output for the BBBk is using the HDMI, which I don't wish to do.  So on the BBBk I 
+have installed a cheap USB sound card:
+http://www.amazon.com/dp/B002R33VWW/ref=pe_175190_21431760_M3T1_ST1_dp_1
+
+I did not find any valid packages to install the ALSA, so I did it manually:
+    wget ftp://ftp.alsa-project.org/pub/lib/a...1.0.25.tar.bz2 
+    tar jxf alsa-lib-1.0.25.tar.bz2
+    cd alsa-lib-1.0.25
+    ./configure
+    make install
+
+This did not set the USB device to be default sound device, I used the command: aplay -L
+to list the nodes.  From which I created the configuration file: /etc/asound.conf
+    pcm.!default sysdefault:Device
+    
+Next up, install ESpeak, which also relies on a library portaudio. I downloaded the most recent package for
+portaudio from www.portaudio.com.  I extracted it and then:
+    ./configure
+    make install
+    
+I downloaded espeak-1.47.11-source.zip from sourceforge.net.  After I extracted the stuff from the zip file and
+copied down the sources, I then did:
+    ./configure
+    make clean
+    make
+    make install
+
+Tried running and found that the portaudio library was in /usr/local/lib
+Could maybe move it, but instead defined:
+
+    LD_LIBRARY_PATH=/usr/local/lib
+    export LD_LIBRARY_PATH
+in /etc/profile
+
+...  
+
+## Streaming video
 With the webcam I am playing around with the mjpg-streamer to stream from Pi to PC...
 Instructions on how to do this is up at: 
 http://www.instructables.com/id/Create-an-internet-controlled-robot-using-Livebots/step5/Get-the-webcam-streamer-for-Raspberry-Pi/
 
 
+# Warning
 
-
-
+This is a work in progress
 
