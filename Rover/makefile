@@ -25,7 +25,7 @@ endif
 COMPILE_OPTS = -pedantic -g -O2 -fno-rtti
 
 #~~~~~~~~~~~~~~~~~~~~ Linker Options ~~~~~~~~~~~~~~~~~~~~
-LDFLAGS = $(LIBRARY_DIRS) -lpthread -lArduinoPort -lrt
+LDFLAGS = $(LIBRARY_DIRS) -lpthread -lArduinoPort -lasound -lrt
 
 #~~~~~~~~~~~~~~~~~~~~ Toolchain Prefix ~~~~~~~~~~~~~~~~~~~~
 ifeq ($(OSTYPE),linux-gnueabi)

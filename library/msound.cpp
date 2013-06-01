@@ -134,7 +134,7 @@ void MSound(byte cNotes, ...)
 
         uDur = va_arg(ap, unsigned int);
         uFreq = va_arg(ap, unsigned int);
-
+#ifdef WAIT_TILL_NOTE_COMPLETES_BEFORE_NEXT
         // Ok lets set the duration
         snd_pcm_state_t pcmstate;
         int cnt = 500;
@@ -147,7 +147,7 @@ void MSound(byte cNotes, ...)
 #ifdef DEBUG_SOUND
         printf("ST: %i C: %i\n", (int)pcmstate, cnt);
 #endif
-
+#endif 
 #ifdef DEBUG_SOUND
         ulStart = millis();
 #endif

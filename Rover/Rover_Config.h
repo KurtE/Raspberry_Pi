@@ -20,6 +20,8 @@
 //#define PAN_SERVO                2      // Pan and tilt... (Optional) Undefine if not needed
 //#define TILT_SERVO               3      //
 
+#define OPT_PCMSOUND
+
 #define SOUND_PIN                5        // Botboarduino JR pin number
 #define PS2_DAT                  6        // PS2 Data line
 #define PS2_CMD                  7        // PS2 Command line
@@ -34,6 +36,10 @@
 
 #define OUR_SERVOS_MIN 563
 #define OUR_SERVOS_MAX 2437
+
+
+#define VOLTAGE_MIN1	100	// 10 volts is the min that we will allow...
+
 
 #define PAN_MIN       10     // Min Pan 
 #define PAN_MAX       170    // Max Pan

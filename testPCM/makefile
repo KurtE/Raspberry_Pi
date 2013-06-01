@@ -9,7 +9,7 @@ MAIN_OBJS:= $(subst .cpp,.o,$(SOURCES))
 MAIN_DEPS:= $(subst .cpp,.d,$(SOURCES))
 
 #~~~~~~~~~~~~~~~~~~~~ Include Directories ~~~~~~~~~~~~~~~~~~~~
-INCLUDE_DIRS = -I. -I/usr/include/espeak
+INCLUDE_DIRS = -I.
 
 #~~~~~~~~~~~~~~~~~~~~ Library Directories ~~~~~~~~~~~~~~~~~~~~
 LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf
@@ -19,10 +19,14 @@ COMPILE_OPTS = -pedantic -g -O2 -fno-rtti
 #COMPILE_OPTS = -Wall -pedantic -g -O2
 
 #~~~~~~~~~~~~~~~~~~~~ Linker Options ~~~~~~~~~~~~~~~~~~~~
-LDFLAGS = $(LIBRARY_DIRS) -lpthread -lespeak
+LDFLAGS = $(LIBRARY_DIRS) -lpthread -lasound
 
 #~~~~~~~~~~~~~~~~~~~~ Toolchain Prefix ~~~~~~~~~~~~~~~~~~~~
+ifeq ($(OSTYPE),linux-gnueabi)
+TCHAIN_PREFIX=arm-angstrom-linux-gnueabi-
+else
 TCHAIN_PREFIX=arm-linux-gnueabihf-
+endif
 #TCHAIN_PREFIX=x86_64-linux-gnu-
 
 CXX = $(TCHAIN_PREFIX)g++

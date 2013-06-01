@@ -1,4 +1,4 @@
-
+#define DEBUG_SOUND
 /*
 * This extra small demo sends a random samples to your speakers.
 */
@@ -139,11 +139,13 @@ void MSound(byte cNotes, ...)
 			// Ok lets set the duration
 			snd_pcm_state_t pcmstate;
 			int cnt = 500;
+#if 0
 			while ((pcmstate = snd_pcm_state(g_PCMhandle)) == SND_PCM_STATE_RUNNING) {
 				if (!--cnt)
 					break;
 				delay(1);
 			}
+#endif
 #ifdef DEBUG_SOUND
 			printf("ST: %i C: %i\n", (int)pcmstate, cnt);
 #endif				
@@ -282,7 +284,7 @@ int set_hwparams(snd_pcm_t *handle, snd_pcm_hw_params_t *params)
   	}
   	period_size = size;
 #ifdef DEBUG_SOUND
-	printf("Period T:%i S:%\n", period_time, period_size);
+	printf("Period T:%i S:%i\n", period_time, period_size);
 #endif
   	/* write the parameters to device */
   	err = snd_pcm_hw_params(handle, params);

@@ -1,0 +1,2 @@
+SUBSYSTEM=="tty", ATTRS{port}=="0x0", ATTRS{line}=="1", SYMLINK+="ttyXBEE"
+SUBSYSTEM=="tty", ATTRS{port}=="0x0", ATTRS{line}=="2", SYMLINK+="ttyRCLAW"

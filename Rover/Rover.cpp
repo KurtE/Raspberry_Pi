@@ -418,7 +418,6 @@ void ControlInput(void)
     else
     {
         // We did not receive a valid packet.  check for a timeout to see if we should turn robot off...
-            g_fRoverActive = true;
         if (g_fRoverActive)
         {
             if ((millis() - g_ulLastMsgTime) > ARBOTIX_TO)
@@ -593,6 +592,9 @@ boolean TerminalMonitor(void)
 //     and the Arduino is still being powered by USB
 //==============================================================================
 uint16_t g_wVSPrev;
+#if defined(PACKET_MODE)
+unsigned long g_ulCVTimeLast;
+#endif
 
 void CheckVoltages(void) 
 {
@@ -609,6 +611,28 @@ void CheckVoltages(void)
         // detach any servos we may have...
         MSound( 3, 100, 2500, 100, 2500, 100, 2500);
     }
+#elif defined(PACKET_MODE)
+    // Using Roboclaw in packet mode, so we can ask it for the
+    // motor voltages... Note: This requires us to send and receive
+    // stuff serially, so probably only do this every so often.
+    if ((millis()-g_ulCVTimeLast) > 1000)
+    {
+        // more than a second since we last tested
+        uint16_t wVS = RClaw.ReadMainBatteryVoltage(PACKETS_ADDRESS);
+
+#ifdef DEBUG
+        if (g_fDebugOutput && (wVS != g_wVSPrev)) {
+            Serial.print("VS: ");
+            Serial.println(wVS, DEC);
+            g_wVSPrev = wVS;
+        }
+#endif
+        if ((wVS < (uint16_t)VOLTAGE_MIN1) && g_fServosInit) {
+            // detach any servos we may have...
+            MSound( 3, 100, 2500, 100, 2500, 100, 2500);
+        }
+        g_ulCVTimeLast = millis();  // remember last we did it.
+    }    
 #endif
 }
 

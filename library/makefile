@@ -3,21 +3,24 @@
 MAIN_OUT = libArduinoPort.a
 
 #~~~~~~~~~~~~~~~~~~~~ Source Files ~~~~~~~~~~~~~~~~~~~~
-SOURCES = \
+COMMON_SOURCES = \
 		Wiring.cpp \
 		Print.cpp \
 		Stream.cpp \
 		WrapperSerial.cpp \
 		CommanderEx.cpp \
 		diyxbee.cpp \
-		RoboClaw.cpp
-ifeq ($(OSTYPE),linux-gnueabihf)
+		RoboClaw.cpp 
+# I believe I have these building now for BBBk
+#ifeq ($(OSTYPE),linux-gnueabihf)
 # more files currently on the Raspberry PI
-SOURCES = $(SOURCES) \
+EXTRA_SOURCES =  \
 		msound.cpp \
 		speak.cpp \
 		SDRFunctions.cpp 
-endif
+#endif
+
+SOURCES = $(COMMON_SOURCES) $(EXTRA_SOURCES)
 
 MAIN_OBJS:= $(subst .cpp,.o,$(SOURCES))
 
@@ -25,13 +28,13 @@ MAIN_DEPS:= $(subst .cpp,.d,$(SOURCES))
 
 #~~~~~~~~~~~~~~~~~~~~ Include Directories ~~~~~~~~~~~~~~~~~~~~
 ifeq ($(OSTYPE),linux-gnueabi)
-INCLUDE_DIRS = -I.
+INCLUDE_DIRS = -I. -I/usr/include/sound -I/user/include/alsa
+
 else
-INCLUDE_DIRS = -I. -I/usr/include/espeak
+INCLUDE_DIRS = -I. -I/usr/include/espeak -I/user/include/alsa
 endif
 
 #~~~~~~~~~~~~~~~~~~~~ Library Directories ~~~~~~~~~~~~~~~~~~~~
-
 #~~~~~~~~~~~~~~~~~~~~ Compiler Options ~~~~~~~~~~~~~~~~~~~~
 COMPILE_OPTS = -Wall -pedantic -g -O2 -fno-rtti -Wno-write-strings
 
@@ -45,6 +48,7 @@ else
 #RPI
 TCHAIN_PREFIX=arm-linux-gnueabihf-
 endif
+
 #TCHAIN_PREFIX=x86_64-linux-gnu-
 
 CXX = $(TCHAIN_PREFIX)g++
@@ -68,6 +72,7 @@ MSG_END = --------  end  --------
 begin:
 	@echo
 	@echo $(MSG_BEGIN)
+	@echo ${OSTYPE}
 
 end:
 	@echo $(MSG_END)
