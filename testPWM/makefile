@@ -1,70 +1,54 @@
-#try to create a static library of code for me to use for different programs
 #~~~~~~~~~~~~~~~~~~~~ Output File Name ~~~~~~~~~~~~~~~~~~~~
-MAIN_OUT = libArduinoPort.a
+MAIN_OUT = BasicPWMExample
 
 #~~~~~~~~~~~~~~~~~~~~ Source Files ~~~~~~~~~~~~~~~~~~~~
-COMMON_SOURCES = \
-		Wiring.cpp \
-		Print.cpp \
-		Stream.cpp \
-		WrapperSerial.cpp \
-		CommanderEx.cpp \
-		diyxbee.cpp \
-		PWM.cpp \
-		RoboClaw.cpp 
-# I believe I have these building now for BBBk
-#ifeq ($(OSTYPE),linux-gnueabihf)
-# more files currently on the Raspberry PI
-EXTRA_SOURCES =  \
-		msound.cpp \
-		speak.cpp \
-		SDRFunctions.cpp 
-#endif
-
-SOURCES = $(COMMON_SOURCES) $(EXTRA_SOURCES)
+SOURCES = \
+		BasicPWMExample.cpp  
 
 MAIN_OBJS:= $(subst .cpp,.o,$(SOURCES))
 
 MAIN_DEPS:= $(subst .cpp,.d,$(SOURCES))
 
 #~~~~~~~~~~~~~~~~~~~~ Include Directories ~~~~~~~~~~~~~~~~~~~~
-ifeq ($(OSTYPE),linux-gnueabi)
-INCLUDE_DIRS = -I. -I/usr/include/sound -I/user/include/alsa
+INCLUDE_DIRS = -I. -I../library
 
-else
-INCLUDE_DIRS = -I. -I/usr/include/espeak -I/user/include/alsa
-endif
 
 #~~~~~~~~~~~~~~~~~~~~ Library Directories ~~~~~~~~~~~~~~~~~~~~
+LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../library
+
 #~~~~~~~~~~~~~~~~~~~~ Compiler Options ~~~~~~~~~~~~~~~~~~~~
-COMPILE_OPTS = -Wall -pedantic -g -O2 -fno-rtti -Wno-write-strings
+COMPILE_OPTS = -pedantic -g -O2 -fno-rtti
 
 #~~~~~~~~~~~~~~~~~~~~ Linker Options ~~~~~~~~~~~~~~~~~~~~
+LDFLAGS = $(LIBRARY_DIRS) -lpthread -lArduinoPort -lrt
 
 #~~~~~~~~~~~~~~~~~~~~ Toolchain Prefix ~~~~~~~~~~~~~~~~~~~~
 ifeq ($(OSTYPE),linux-gnueabi)
-#BBBk
 TCHAIN_PREFIX=arm-angstrom-linux-gnueabi-
 else
-#RPI
 TCHAIN_PREFIX=arm-linux-gnueabihf-
 endif
-
 #TCHAIN_PREFIX=x86_64-linux-gnu-
 
 CXX = $(TCHAIN_PREFIX)g++
 CXXFLAGS = $(COMPILE_OPTS) $(INCLUDE_DIRS)
-AR = ar
-ARFLAGS = rcs
 
 #~~~~~~~~~~~~~~~~~~~~ all ~~~~~~~~~~~~~~~~~~~~
-all: begin gccversion build end
+
+all: LIBRARY begin gccversion build end
+
+#~~~~~~~~~~~~~~~~~~~~ library ~~~~~~~~~~~~~~~~~~~~
+LIBRARY:
+	cd ../library; $(MAKE)
+
 
 #~~~~~~~~~~~~~~~~~~~~ build ~~~~~~~~~~~~~~~~~~~~
+
+
 build: $(MAIN_OUT)
 
-$(MAIN_OUT): $(MAIN_OBJS)
-	$(AR) $(ARFLAGS) $(MAIN_OUT) $(MAIN_OBJS)
+$(MAIN_OUT): $(MAIN_OBJS) ../library/libArduinoPort.a
+	$(CXX) $(CXXFLAGS) $(MAIN_OBJS) -o $(MAIN_OUT) $(LDFLAGS)
 
 MSG_BEGIN = -------- begin --------
 MSG_END = --------  end  --------
@@ -73,7 +57,6 @@ MSG_END = --------  end  --------
 begin:
 	@echo
 	@echo $(MSG_BEGIN)
-	@echo ${OSTYPE}
 
 end:
 	@echo $(MSG_END)
@@ -86,9 +69,10 @@ gccversion:
 clean: begin clean_list end
 
 clean_list:
-	-rm -f $(MAIN_OBJS)
-	-rm -f $(MAIN_OUT)
-	-rm -f $(MAIN_DEPS)
+	-rm $(MAIN_OBJS)
+	-rm $(MAIN_OUT)
+	-rm $(MAIN_DEPS)
+	-cd ../library ; make clean
 
 #~~~~~~~~~~~~~~~~~~~~ backup ~~~~~~~~~~~~~~~~~~~~
 backup: clean
@@ -98,6 +82,6 @@ backup: clean
 include $(subst .cpp,.d,$(SOURCES))
 
 %.d: %.cpp
-	$(CC) -M $(CPPFLAGS) $< > $@.$$$$; \
+	$(CC) -M $(CXXFLAGS) $< > $@.$$$$; \
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;  \
 	rm -f $@.$$$$

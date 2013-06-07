@@ -1,4 +1,6 @@
-# Warning
+Warning
+#######
+
 This is a Work In Progress!  There are no warrantees or Guarantees 
 of any type that this code is useable for anything.  But I hope it is…
 
@@ -28,7 +30,8 @@ Trossen Robotics: http://forums.trossenrobotics.com/showthread.php?6158-BeagleBo
 
 
 
-# Quick Start Guide
+Quick Start Guide
+=================
 
 First link to Quick start: http://www.raspberrypi.org/quick-start-guide
 
@@ -64,7 +67,8 @@ sudo rpi-update
 
 The above will pretty much get your RPI up to date with all the latest and greatest.
 
-## Putty and WinSCP
+Putty and WinSCP
+----------------
 
 Also if setting up a PC to talk to a PI through the network, more information from Kevin:
 So for file transfer I use WinSCP. It's a nice little GUI for simple FTP. I still code on my PC 
@@ -79,7 +83,8 @@ http://www.chiark.greenend.org.uk/~sgtatham/putty/download.html
 
 As long as you are comfortable with a terminal this should work fine.
 
-## Configure Raspberry Pi
+Configure Raspberry Pi
+----------------------
 
 Note: On the first boot, I also use the configuration program, to resize the main partition to
 the size of the SD card, plus time zone, keyboard type... If I missed changing anything can always 
@@ -97,7 +102,8 @@ sudo adduser kurt sudo
 if you wish to make the new user act like the user pi, as with regards to sudo command, you can edit the information:
 sudo nano /etc/sudoerrs
 
-## Setup WiFI on RPI
+Setup WiFI on RPI
+-----------------
 
 On this 2nd Pi I am trying a different USB Wifi adapter that has an external 5dbi gain antenna 
 ( http://www.amazon.com/GMYLE-Wireless-80 ... pd_cp_pc_0 ) 
@@ -106,7 +112,8 @@ up and working with my network. This time I simply had the GUI up (startX) and r
  program on the desktop and was able to see my network, choose the right AP, entered in the WPA key
  and so far it appears to work  
 
-## Setup tty Device on RPI
+Setup tty Device on RPI
+-----------------------
 
 Also My code is setup to use an XBee and an SSC-32, both of which connect up as USB devices.  I did not want my
 code to have to depend on the order the devices are added so I wished to setup rules to create an alias for these devices
@@ -128,14 +135,16 @@ I see something like:
 lrwxrwxrwx 1 root root 7 Dec 31  1969 /dev/ttyXBEE -> ttyUSB0
 
 
-## Setup TTy Device on BBBk
+Setup TTy Device on BBBk
+------------------------
 
 I can also use the same type of setup on the BBBk, but in addition to this, the BBBk has multiple 
 Usarts available on expansion connectors P8/P9.  However to use these, you need to update the device
 tree.  I will put more information in here on how to do that, including files I use to update.
 More information up on: http://blog.pignology.net/2013/05/getting-uart2-devttyo1-working-on.html
 
-# Download and Build this code.
+Download and Build this code.
+=============================
 
 Then you can copy or git the sources that I have up on github. The commands I did to do this is:
 cd ~
@@ -145,7 +154,8 @@ cd git
 cd Raspberry_Pi/Phoenix 
 make
 
-# PCM Sound and ESpeak
+PCM Sound and ESpeak
+====================
 
 I want some form of sound capability on my robots, to help with different things like simply 
 acknowledgments and also fun to play with speech.  There is now code in the library directory for
@@ -155,7 +165,9 @@ doing this.
 I have been playing around with installing everything necessary to be able to install my Phoenix code 
 on this Pi and be able to compile it. I installed it by using the following commands:
 
-## Setup for Raspberry Pi
+Setup for Raspberry Pi
+----------------------
+
 First currently code is dependent on using espeak code. Will probably make this optional later... 
 To install the necessary stuff you need to do something like:
 sudo apt-get install espeak
@@ -172,29 +184,8 @@ Note: you should then try to configure espeak and see if you can get it to work.
 earlier in this thread, but look at the data up at the link:  http://elinux.org/RPi_Text_to_Speech_%28Speech_Synthesis%29
 
 
-## Setup for BeagleBone Black
-
-
-
-# Other notes
-
-## Raspberry Pi
-
-### Overclock
-
-Many overclock their RPI up from the default 700mhz up to 1000mhz to do this:
-sudo nano /boot/config.txt
-add or uncomment lines:
-arm_freq=1000
-sdram_freq+500 
-
-More details up at: http://www.jeremymorgan.com/tutorials/raspberry-pi/how-to-overclock-raspberry-pi/ and
-http://raspberrypi.stackexchange.com/questions/1219/how-do-i-determine-the-current-mhz
-
-More details about using the RPICONFIG and warnings about corrupting SDCards up at:
-http://elinux.org/RPiconfig#Overclocking_options
-
-## BeagleBone Black
+Setup for BeagleBone Black
+--------------------------
 
 The only sound output for the BBBk is using the HDMI, which I don't wish to do.  So on the BBBk I 
 have installed a cheap USB sound card:
@@ -232,13 +223,59 @@ in /etc/profile
 
 ...  
 
-## Streaming video
+
+
+Other notes
+=============
+
+Raspberry Pi
+------------
+
+### Overclock ###
+
+Many overclock their RPI up from the default 700mhz up to 1000mhz to do this:
+sudo nano /boot/config.txt
+add or uncomment lines:
+arm_freq=1000
+sdram_freq+500 
+
+More details up at: http://www.jeremymorgan.com/tutorials/raspberry-pi/how-to-overclock-raspberry-pi/ and
+http://raspberrypi.stackexchange.com/questions/1219/how-do-i-determine-the-current-mhz
+
+More details about using the RPICONFIG and warnings about corrupting SDCards up at:
+http://elinux.org/RPiconfig#Overclocking_options
+
+
+Streaming video
+---------------
+
 With the webcam I am playing around with the mjpg-streamer to stream from Pi to PC...
 Instructions on how to do this is up at: 
 http://www.instructables.com/id/Create-an-internet-controlled-robot-using-Livebots/step5/Get-the-webcam-streamer-for-Raspberry-Pi/
 
+BBB PWM Support
+---------------
 
-# Warning
+I am now playing with trying to have Servos supported directly on the Beagle Bone Black.  There are several threads 
+up about enabling PWM support up on the BeagleBoard.org forums.  Also a member created a C++ library for it, which
+I borrowed the code from as part of my library.  More details up on the 
+[thread](https://groups.google.com/forum/embed/?place=forum%2Fbeagleboard&showsearch=true&showpopout=true&showtabs=true&hideforumtitle=true&parenturl=http%3A%2F%2Fbeagleboard.org%2FCommunity%2FForums%3Futm_expid%3D6702460-6%26utm_referrer%3Dhttp%253A%252F%252Fbeagleboard.org%252FSupport%252FHardware%252520Support#!category-topic/beagleboard/C2tzvRYk1Wg)
+
+I have an updated copy of his library code included in mine plus a simple PWM test case, which enables two PWM pins and has 
+them pulse from 500-2500us pulses.
+
+There are issues with the default test-pwm driver that did not allow us to properly initialize two pwm devices on the same
+logical device.  You need to update the compiled driver for this (/lib/modules/3.8.13/kernel/drivers/pwm/pwm_test.ko). 
+Likewise he created duplicates of the device tree overlays, that initialized the values to a state that allowed both
+channels period to be set before they are initialized.  They have names like: sc_pwm_P8_13-00A0.dtbo
+which must be coppied into: /lib/firmware.
+
+May upload some precompiled ones here such that you don't have to build the kernel to get them. 
+    
+
+
+Warning
+=======
 
 This is a work in progress
 
