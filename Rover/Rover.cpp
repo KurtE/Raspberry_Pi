@@ -59,6 +59,7 @@
 #include <stdarg.h>
 #include <time.h>
 #include <inttypes.h>
+#include <signal.h>
 
 #include "ArduinoDefs.h"
 #include "msound.h"
@@ -73,6 +74,19 @@
 
 // Move most of the configuration gunk into header file.
 #include "Rover_Config.h"
+
+#ifdef BBB_SERVO_SUPPORT
+#include "PWM.h"
+
+
+// BUGBUG: should work on not hard codding...
+PWM::Pin pinPan("P8_13", 20000000); // Since both pins share the same channel, they're periods must be the same
+PWM::Pin pinTilt("P8_19", 20000000);
+PWM::Pin pinRot("P9_16", 20000000);
+
+PWM::Pin *g_aServos[] = {&pinPan, &pinTilt, &pinRot};
+
+#endif
 
 enum {ONE_STICK_MODE, TANK_MODE};    // define different steering modes
 
@@ -113,9 +127,10 @@ uint8_t     g_bGear;               // What gear our we in?
 uint8_t     g_bSteeringMode;       //
 
 // Some definitions for Pan and Tilt
-#ifdef PAN_SERVO
+#ifdef BBB_SERVO_SUPPORT
 uint16_t        g_wPan;              // What PWM value should we send to the Pan servo
 uint16_t        g_wTilt;             // Likewise for Tilt... 
+uint16_t        g_wRot;              // And the rotation
 #endif
 
 // Normalized data coming back from PS2 function
@@ -152,8 +167,6 @@ typedef struct _servo_save_data
 
 } SERVO_SAVE_DATA;
 
-// And define our servos
-ServoEx     g_aServos[MNUMSERVOS];    // Define servos object for each servo
 
 #endif
 
@@ -167,13 +180,68 @@ extern void InitializeServos(void);
 extern boolean TerminalMonitor(void);
 extern void CheckVoltages(void) ;
 extern void ControlInput(void);
+extern void FindServoZeroPoints();
 
+#define RCD_VERSION 01
+class RoverConfigData 
+{
+    public: 
+        void Load(void);
+        void Save(void);
+        
+        // For now have real simple data.
+        uint8_t     bVersion;   // What version is stored out.
+        uint8_t     bChecksum;  // checksum
+        
+        // Real data - start off with servos.
+        enum {PAN=0, TILT, ROTATE, cServos};
+        struct {
+            uint16_t    wCenter;    // Pulse Width for Center of Pan
+            uint16_t    wMin;        // Minimum Value;
+            uint16_t    wMax;        // Max Pan value
+        } aServos[RoverConfigData::cServos];
+};
+
+RoverConfigData rcd;    // create an instance of the configuration data.
 
 //--------------------------------------------------------------------------
-// SETUP: the main arduino setup function.
+// SignalHandler - Try to free up things like servos if we abort.
+//--------------------------------------------------------------------------
+void SignalHandler(int sig){
+    printf("Caught signal %d\n", sig);
+
+    // Stop motors if they are active
+    if (g_fRoverActive) {    
+        g_MotorsDriver.RDrive(0);
+        g_MotorsDriver.LDrive(0);
+    }
+
+#ifdef BBB_SERVO_SUPPORT
+    printf("Free Servos\n");
+    for (int i=0; i < sizeof(g_aServos)/sizeof(g_aServos[0]); i++) {
+        g_aServos[i]->Disable();
+    }
+#endif
+
+   exit(1); 
+
+}
+      
+
+//--------------------------------------------------------------------------
+// Main: the main  function.
 //--------------------------------------------------------------------------
 int main(int argc, char *argv[])
 {
+    // Install signal handler to allow us to do some cleanup...
+    struct sigaction sigIntHandler;
+
+    sigIntHandler.sa_handler = SignalHandler;
+    sigemptyset(&sigIntHandler.sa_mask);
+    sigIntHandler.sa_flags = 0;
+
+    sigaction(SIGINT, &sigIntHandler, NULL);
+
     char abT[40];        // give a nice large buffer.
     uint8_t cbRead;
 
@@ -186,6 +254,8 @@ int main(int argc, char *argv[])
             }
         }
     char *pszDevice;    
+
+
     if (!RClaw.begin(pszDevice = (argc > 1? argv[1] : szRClawDevice), B38400))
     {
         printf("RClaw (%s) Begin failed\n", pszDevice);
@@ -203,6 +273,8 @@ int main(int argc, char *argv[])
     delay(250);
     Serial.begin(/*57600*/);
 
+    // Try to load the Rover Configuration Data
+    rcd.Load();
 
     g_MotorsDriver.Init();
 
@@ -215,10 +287,6 @@ int main(int argc, char *argv[])
     g_fServosInit = false;
     g_bGear = 3;                                // We init in 3rd gear.
     g_bSteeringMode = ONE_STICK_MODE;
-#ifdef PAN_SERVO
-    g_wPan = 90;
-    g_wTilt = 90;    // In degrees
-#endif
     // Initialize our pan and tilt servos
     InitializeServos();                                // Make sure the servos are active
     
@@ -240,8 +308,8 @@ int main(int argc, char *argv[])
         // Drive the rover
         if (g_fRoverActive) {
             if (g_bSteeringMode == TANK_MODE) {
-                sRDrivePWM = RStickY;
-                sLDrivePWM = LStickY;
+                sRDrivePWM = LStickY; //RStickY; // BUGBUG - appears like wrong ones doing each...
+                sLDrivePWM = RStickY; // LStickY;
             } else {    // One stick driving
                 if ((RStickY >=0) && (RStickX >= 0)) {    // Quadrant 1
                     sRDrivePWM = RStickY - RStickX;
@@ -264,11 +332,11 @@ int main(int argc, char *argv[])
             }
             
             // Lets output the appropriate stuff to the motor controller
-        // ok lets figure out our speeds to output to the two motors.  two different commands
-        // depending on going forward or backward.
-        // Scale the two values for the motors.
+            // ok lets figure out our speeds to output to the two motors.  two different commands
+            // depending on going forward or backward.
+            // Scale the two values for the motors.
             sRDrivePWM = max(min((sRDrivePWM * g_bGear) / 4, 127), -127);    // This should keep up in the -127 to +127 range and scale it depending on what gear we are in.
-        sLDrivePWM = max(min((sLDrivePWM * g_bGear) / 4, 127), -127);
+            sLDrivePWM = max(min((sLDrivePWM * g_bGear) / 4, 127), -127);
 
     #ifdef DEBUG
             if (g_fDebugOutput) {
@@ -286,20 +354,28 @@ int main(int argc, char *argv[])
             g_MotorsDriver.LDrive(sLDrivePWM);
 
             // Also if we have a pan/tilt lets update that as well..
-    #ifdef PAN_SERVO
+    #ifdef BBB_SERVO_SUPPORT
             if (g_bSteeringMode != TANK_MODE) {
-                if (LStickX && ((ServoGroupMove.moving() & ((1 << PANS_I))) == 0)) {
-                    w = max(min(g_wPan + LStickX/20, PAN_MAX), PAN_MIN);
-                    if (w != g_wPan) {
-                        g_aServos[PANS_I].move(w, 100);
-                        g_wPan = w;
-                    }
+                if (LStickX ) {
+                    if (command.buttons & BUT_L6) {     //modify which thing we are controlling depending on if L6 is down or not.
+                        w = max(min(g_wRot + LStickX/8, rcd.aServos[RoverConfigData::ROTATE].wMax), rcd.aServos[RoverConfigData::ROTATE].wMin);
+                        if (w != g_wRot) {
+                            pinRot.SetDutyUS(w);
+                            g_wRot = w;
+                        }
+                    } else {
+                        w = max(min(g_wPan + LStickX/8, rcd.aServos[RoverConfigData::PAN].wMax), rcd.aServos[RoverConfigData::PAN].wMin);
+                        if (w != g_wPan) {
+                            pinPan.SetDutyUS(w);
+                            g_wPan = w;
+                        }
+                    }    
                 }
         
-                if (LStickY && ((ServoGroupMove.moving() & ((1 << TILTS_I))) == 0)) {
-                    w = max(min(g_wTilt - LStickY/20, TILT_MAX), TILT_MIN);
+                if (LStickY) {
+                    w = max(min(g_wTilt + LStickY/8, rcd.aServos[RoverConfigData::TILT].wMax), rcd.aServos[RoverConfigData::TILT].wMin);
                     if (w != g_wTilt) {
-                        g_aServos[TILTS_I].move(w, 100);
+                        pinTilt.SetDutyUS(w);
                         g_wTilt = w;
                     }
                 }
@@ -359,16 +435,18 @@ void ControlInput(void)
             || (abs(command.leftH) >= cTravelDeadZone)
             || (abs(command.leftV) >= cTravelDeadZone);
 
-#ifdef PAN_SERVO
+#ifdef BBB_SERVO_SUPPORT
         // If we have a pan and tilt servos use LT to reset them to zero. 
         if ((command.buttons & BUT_LT) && !(g_bButtonsPrev & BUT_LT))
         {
-            g_wPan = 90;
-            g_wTilt = 90;
+            g_wPan = rcd.aServos[RoverConfigData::PAN].wCenter;
+            g_wTilt = rcd.aServos[RoverConfigData::TILT].wCenter;
+            g_wRot = rcd.aServos[RoverConfigData::ROTATE].wCenter;
             
             // Could do as one move but good enough
-            g_aServos[PANS_I].move(90, 300);
-            g_aServos[TILTS_I].move(90, 300);
+            pinPan.SetDutyUS(g_wPan);
+            pinTilt.SetDutyUS(g_wTilt);
+            pinRot.SetDutyUS(g_wRot);
         }
 #endif
     
@@ -438,67 +516,23 @@ void ControlInput(void)
 //==============================================================================
 void InitializeServos(void)
 {
-#if MNUMSERVOS > 0
-    SERVO_SAVE_DATA ssd;
-    uint8_t bChksum;
-    uint8_t i;
-    uint8_t *pb;
-    boolean fValid;
+#ifdef BBB_SERVO_SUPPORT
 
-    if (g_fServosInit)
-        return;
+    // Enable both only after we have set the periods properly.
+    // Otherwise we will have conflicts since each pin will try to set its own period and conflict with the others
+    g_wPan = rcd.aServos[RoverConfigData::PAN].wCenter;
+    g_wTilt = rcd.aServos[RoverConfigData::TILT].wCenter; 
+    g_wRot =  rcd.aServos[RoverConfigData::ROTATE].wCenter;  
 
-    g_fServosInit = true;    // say we did it...
-    bChksum = 0;
-    fValid = true;        // start off assuming true
-
-
-    // Now try to read the block out starting at 0...
-    pb = (uint8_t*)&ssd;
-    for (i=0; i< sizeof(ssd); i++) {
-       *pb++ = EEPROM.read(i);
-    }
-
-    // Make sure the count of servos looks about right...
-    if ((ssd.cServos >=2) && (ssd.cServos <= MNUMSERVOS)) {
-        // lets first loop through and calculate the checksum to make
-        // sure the data looks valid.
-        for (i=0; i< ssd.cServos; i++) 	{
-            bChksum += (ssd.asd[i].sPWOffset & 0xff);
-            bChksum += ssd.asd[i].sPWOffset >> 8;
-            // do a little pre-validation...    
-
-            if ((ssd.asd[i].sPWOffset < -200) || (ssd.asd[i].sPWOffset > 200))
-                fValid = false;
-        }	
-
-        if (bChksum != ssd.bChksum) 	
-            fValid = false;
-    }
-
-    // Lets dump the servo offsets to see what we have...
-#ifdef DEBUG
-    if (g_fDebugOutput) {
-        Serial.print("Load Servo offsets :");
-        Serial.print(fValid, HEX);
-        // we have valid data, update our servos...
-        for (i=0; i<MNUMSERVOS; i++) {
-            Serial.print(" ");
-            Serial.print(ssd.asd[i].sPWOffset, DEC);
-        }
-        Serial.println("");
-    }
-#endif        
+    pinPan.SetDutyUS(g_wPan);
+    pinTilt.SetDutyUS(g_wTilt);
+    pinRot.SetDutyUS(g_wRot);
+    pinPan.Enable();
+    pinTilt.Enable();
+    pinRot.Enable();
 
 
-    // OK Lets attach all of our servos
-    for (i=0; i<MNUMSERVOS; i++) {
-        if (fValid && (i < ssd.cServos))
-            g_aServos[i].attach(pgm_read_uint8_t(&g_abPinTable[i]), OUR_SERVOS_MIN+ssd.asd[i].sPWOffset, OUR_SERVOS_MAX+ssd.asd[i].sPWOffset);
-        else
-            g_aServos[i].attach(pgm_read_uint8_t(&g_abPinTable[i]), OUR_SERVOS_MIN, OUR_SERVOS_MAX);
 
-    }
 #endif
 }
 
@@ -516,7 +550,7 @@ boolean TerminalMonitor(void)
     if (g_fShowDebugPrompt) {
         Serial.println("Arduino Rover Monitor");
         Serial.println("D - Toggle debug on or off");
-#if MNUMSERVOS > 0
+#ifdef BBB_SERVO_SUPPORT
         Serial.println("O - Enter Servo offset mode");
         Serial.println("S <SN> <ANGLE> - Move Servo");
 #endif        
@@ -548,13 +582,12 @@ boolean TerminalMonitor(void)
                 Serial.println("Debug is on");
             else
                 Serial.println("Debug is off");
-#if MNUMSERVOS > 0
+#ifdef BBB_SERVO_SUPPORT
         } else if ((ich == 1) && ((szCmdLine[0] == 'o') || (szCmdLine[0] == 'O'))) {
             FindServoZeroPoints();
         } else if (((szCmdLine[0] == 's') || (szCmdLine[0] == 'S'))) {
             // ok lets grab a servo number
             int iServo = 0;
-            short sSign = 1;
             int iAngle = 0;    
             int i;        
             for (i=1; i< ich; i++) {
@@ -568,16 +601,11 @@ boolean TerminalMonitor(void)
                 // now angle
                 while (szCmdLine[i] == ' ')
                     i++;
-                if (szCmdLine[i] == '-') {
-                    sSign = -1;
-                    i++;
-                }
                 while ((szCmdLine[i] >= '0') && (szCmdLine[i] <= '9')) {
                     iAngle = iAngle*10 + szCmdLine[i++] - '0';
                 }
                 // Ok lets try moving the servo there...
-                InitializeServos();        // Make sure the servos have been initialized...
-                g_aServos[iServo].move(sSign * iAngle, 500);
+                g_aServos[iServo]->SetDutyUS(iAngle);
             }
 #endif
         }
@@ -644,7 +672,30 @@ void CheckVoltages(void)
 // 		Will use the new servo function to set the actual pwm rate and see
 //		how well that works...
 //==============================================================================
-#if MNUMSERVOS > 0
+#ifdef BBB_SERVO_SUPPORT
+void MoveServo(PWM::Pin *apin, uint16_t wNew, uint16_t wTime)
+{
+    long lPWNS = apin->GetDutyNS();	// Pulse Width in NS
+    Serial.print((long)(wNew*1000), DEC);
+    Serial.print(" ");
+    Serial.print(lPWNS, DEC);
+
+    uint16_t cCycles = (wTime/20);
+    Serial.print(" ");
+    Serial.print(cCycles, DEC);
+    if (cCycles) {
+        long lDeltaNSCycle = (((long)wNew*1000) - lPWNS) / cCycles;
+        Serial.print(" ");
+        Serial.println(lDeltaNSCycle, DEC);
+        while (cCycles--) {
+            lPWNS += lDeltaNSCycle;
+            apin->SetDutyNS(lPWNS);
+            delay(20); // delay a bit
+        }
+    }
+    apin->SetDutyUS(wNew);
+} 
+
 void FindServoZeroPoints()
 {
     // not clean but...
@@ -653,7 +704,7 @@ void FindServoZeroPoints()
     boolean fNew = true;	// is this a new servo to work with?
     boolean fExit = false;	// when to exit
     int ich;
-    short sOffset;
+    word wCenter;
 
     // OK lets move all of the servos to their zero point.
     InitializeServos();
@@ -661,24 +712,23 @@ void FindServoZeroPoints()
 
     // Lets move all of the servos to their default location...
     for (sSN=0; sSN < MNUMSERVOS; sSN++)
-        g_aServos[sSN].move(90, 500);
+        g_aServos[sSN]->SetDutyUS(rcd.aServos[sSN].wCenter);
 
     sSN = 0;     // start at our first servo.
 
     while(!fExit) {
         if (fNew) {
-            sOffset = g_aServos[sSN].readMicroseconds() - 1500;    // assume we are at zero degrees which should map to 1500
-            Serial << "Servo: " <<  g_apszServos[sSN] << "(" << _DEC(sOffset) << ")" << endl; 
+            wCenter = rcd.aServos[sSN].wCenter;
+            Serial.print("Servo: ");
+            Serial.print(g_apszServos[sSN]);
+            Serial.print("(");
+            Serial.print(wCenter-1500, DEC);
+            Serial.println(")");
 
-        // Now lets wiggle the servo
-            ServoGroupMove.wait(0x3f);
-            g_aServos[sSN].move(90+25, 500);
-
-            ServoGroupMove.wait(0x3f);
-            g_aServos[sSN].move(90-25, 500);
-
-            ServoGroupMove.wait(0x3f);
-            g_aServos[sSN].move(90, 500);
+            // Now lets wiggle the servo
+            MoveServo(g_aServos[sSN], wCenter+250, 500);
+            MoveServo(g_aServos[sSN], wCenter-250, 500);
+            MoveServo(g_aServos[sSN], wCenter, 500);
             fNew = false;
         }
     
@@ -691,14 +741,14 @@ void FindServoZeroPoints()
 
         else if ((data == '+') || (data == '-')) {
             if (data == '+')
-            sOffset += 5;		// increment by 5us
-        else
-            sOffset -= 5;		// increment by 5us
+                rcd.aServos[sSN].wCenter += 5;		// increment by 5us
+            else
+                rcd.aServos[sSN].wCenter -= 5;		// increment by 5us
 
-        Serial <<"    " << _DEC(sOffset) << endl; 
-                // Lets try to use attach to change the offsets...
-                g_aServos[sSN].attach(pgm_read_uint8_t(&g_abPinTable[sSN]), OUR_SERVOS_MIN+sOffset, OUR_SERVOS_MAX+sOffset);
-                g_aServos[sSN].move(90, 500);
+            Serial.print("    ");
+            Serial.println(rcd.aServos[sSN].wCenter, DEC);
+            // Lets try to use attach to change the offsets...
+            MoveServo(g_aServos[sSN], rcd.aServos[sSN].wCenter, 100);
         } else if ((data >= '0') && (data < ('0'+ MNUMSERVOS))) {
         // direct enter of which servo to change
         fNew = true;
@@ -715,7 +765,7 @@ void FindServoZeroPoints()
     Serial.print("Find Servo exit ");
     for (sSN=0; sSN < MNUMSERVOS; sSN++){
         Serial.print(" ");
-        Serial.print(g_aServos[sSN].readMicroseconds(), DEC);
+        Serial.print(g_aServos[sSN]->GetDutyNS()/1000, DEC);
     }
 
     Serial.print("\nSave Changes? Y/N: ");
@@ -725,27 +775,12 @@ void FindServoZeroPoints()
     ; 
 
     if ((data == 'Y') || (data == 'y')) {
-        // Ok they asked for the data to be saved.  We will store the data with a 
-        // number of servos (uint8_t)at the start, followed by a uint8_t for a checksum...followed by uint16_t for each servo center and for the
-    // heck of it a uint16_t for the range, although we don't muck with it yet, we might...
-    // 
-    SERVO_SAVE_DATA ssd;
-    ssd.cServos = MNUMSERVOS;
-    ssd.bChksum = 0;
-    for (sSN=0; sSN < MNUMSERVOS; sSN++) {
-        ssd.asd[sSN].sPWOffset =  g_aServos[sSN].readMicroseconds()-1500;
-        ssd.bChksum += (ssd.asd[sSN].sPWOffset & 0xff);
-        ssd.bChksum += ssd.asd[sSN].sPWOffset >> 8;
-    }
+        // call off to save away the updated data.
+        rcd.Save();
 
-    // Will write the block out starting at 0... may later change to use some of the other stuff.
-        uint8_t *pb = (uint8_t*)&ssd;
-        
-        for (sSN=0; sSN < sizeof(ssd); sSN++) 
-            EEPROM.write(sSN, *pb++);
     } else {
         g_fServosInit = false;    // Lets go back and reinit...
-         InitializeServos();
+        rcd.Load();
     }
 
 }
@@ -847,3 +882,72 @@ void MotorsDriver::LDrive(short sVal) {
     }
 }
 #endif
+
+
+//==============================================================================
+//  RoverConfigData Class...
+//==============================================================================
+
+void RoverConfigData::Load(void) {
+    // Initialize to default data...
+    // Lets see if we can read in the file information...
+    boolean fValid = false;
+
+    FILE * pf = fopen("/usr/share/rover/roverrc", "r");
+    if (pf) {
+        int cbRead = fread((uint8_t *)this, 1, sizeof(RoverConfigData), pf);
+        fclose(pf);
+        if ((cbRead == sizeof(RoverConfigData)) && (bVersion == RCD_VERSION)) {
+            uint8_t *pb = (uint8_t *)this;
+            uint8_t bCalcChecksum = 0;
+    
+            for(pb+=2; pb < ((uint8_t*)this + sizeof(RoverConfigData)); pb++)
+                bCalcChecksum += *pb;
+            if (bCalcChecksum == bChecksum) {
+                printf("Rover Config Data Valid");
+                fValid = true;
+            }
+        }
+    }
+
+    if (!fValid) {
+        printf("Rover Config Data - Using defaults");
+        aServos[RoverConfigData::PAN].wCenter = 1500;
+        aServos[RoverConfigData::PAN].wMin = PAN_MIN;
+        aServos[RoverConfigData::PAN].wMax = PAN_MAX;
+        
+        aServos[RoverConfigData::TILT].wCenter = 1500;
+        aServos[RoverConfigData::TILT].wMin = TILT_MIN;   
+        aServos[RoverConfigData::TILT].wMax = TILT_MAX;
+
+        aServos[RoverConfigData::ROTATE].wCenter = 1500;
+        aServos[RoverConfigData::ROTATE].wMin = ROTATE_MIN;   
+        aServos[RoverConfigData::ROTATE].wMax = ROTATE_MAX;
+    }
+}
+
+void RoverConfigData::Save(void) {
+    bVersion = RCD_VERSION;   // What version is stored out.
+    uint8_t *pb = (uint8_t *)this;
+    bChecksum = 0;
+    
+    for(pb+=2; pb < ((uint8_t*)this + sizeof(RoverConfigData)); pb++)
+        bChecksum += *pb;
+    
+    
+    std::fstream out;
+    FILE * pf = fopen("/usr/share/rover/roverrc", "w");
+    if (!pf) {
+        int status = mkdir("/usr/share/rover", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        if (status == 0)
+            pf = fopen("/usr/share/rover/roverrc", "w");
+    }
+
+    if (pf) {
+        fwrite((uint8_t *)this, sizeof(RoverConfigData), 1, pf);
+        fclose(pf);
+    }
+    else {
+        printf("Failed to open otuput file");
+    }
+}

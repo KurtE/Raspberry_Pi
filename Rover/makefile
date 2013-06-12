@@ -22,7 +22,8 @@ endif
 
 
 #~~~~~~~~~~~~~~~~~~~~ Compiler Options ~~~~~~~~~~~~~~~~~~~~
-COMPILE_OPTS = -pedantic -g -O2 -fno-rtti
+COMPILE_OPTS = -pedantic -g -O2 -fno-rtti -Wno-write-strings
+
 
 #~~~~~~~~~~~~~~~~~~~~ Linker Options ~~~~~~~~~~~~~~~~~~~~
 LDFLAGS = $(LIBRARY_DIRS) -lpthread -lArduinoPort -lasound -lrt
