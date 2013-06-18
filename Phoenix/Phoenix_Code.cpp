@@ -29,6 +29,7 @@
 
 #include "Hex_Cfg.h"
 #include "Phoenix.h"
+#include <signal.h>
 
 #ifdef OPT_ESPEAK
 #include "speak.h"
@@ -509,6 +510,24 @@ extern unsigned long isqrt32 (unsigned long n);
 extern void StartUpdateServos(void);
 extern boolean TerminalMonitor(void);
 
+
+//--------------------------------------------------------------------------
+// SignalHandler - Try to free up things like servos if we abort.
+//--------------------------------------------------------------------------
+void SignalHandler(int sig){
+    printf("Caught signal %d\n", sig);
+
+    // Free up the servos if they are active
+    if (g_InControlState.fRobotOn)
+        g_ServoDriver.FreeServos();
+
+    // Additional cleanup?
+
+   exit(1); 
+
+}
+
+
 //--------------------------------------------------------------------------
 // SETUP: the main arduino setup function.
 //--------------------------------------------------------------------------
@@ -522,6 +541,17 @@ void setup()
 #ifdef DBGSerial
     DBGSerial.begin();                            // Special version for stdin/stdout
 #endif
+
+    // Install signal handler to allow us to do some cleanup...
+    struct sigaction sigIntHandler;
+
+    sigIntHandler.sa_handler = SignalHandler;
+    sigemptyset(&sigIntHandler.sa_mask);
+    sigIntHandler.sa_flags = 0;
+
+    sigaction(SIGINT, &sigIntHandler, NULL);
+
+
 
     InitVoice();                                 // Lets try to initialize voices if needed.
 
@@ -619,7 +649,7 @@ void loop(void)
 
     // We should be able to minimize processor usage when the robot is not logically on
     // or was not on before this call...
-    if (g_InControlState.fPrev_RobotOn || g_InControlState.fPrev_RobotOn)
+    if (g_InControlState.fRobotOn || g_InControlState.fPrev_RobotOn)
     {
 
 #ifdef IsRobotUpsideDown

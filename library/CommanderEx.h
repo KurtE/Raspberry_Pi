@@ -19,6 +19,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 // This version was modified from the original one by Kurt to run on Linux for Raspberry Pi.
 // Also I renamed some members and the like to make it easier to understand...
+// Also Added support to optionally use network sockets to 
+
+#define CMDR_USE_XBEE
+#define CMDR_USE_SOCKET
 
 #ifndef Commander_h
 #define Commander_h
@@ -37,6 +41,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define BUT_RT      0x40
 #define BUT_LT      0x80
 
+
 /* the Commander will send out a frame at about 30hz, this class helps decipher the output. */
 
 class Commander
@@ -44,6 +49,7 @@ class Commander
     public:
         Commander();
         bool begin(char *pszComm, speed_t baud);
+        void end();                               // release any resources.
         void UseSouthPaw();                       // enable southpaw configuration
         int ReadMsgs();                           // must be called regularly to clean out Serial buffer
 
@@ -70,14 +76,22 @@ class Commander
         unsigned char status;
 
         //Private stuff for Linux threading and file descriptor, and open file...
-        int fd;                                   // file descriptor
-        FILE *pfile;                              // Pointer to file
-        pthread_t tid;                            // Thread Id of our reader thread...
         pthread_mutex_t lock;                     // A lock to make sure we don't walk over ourself...
         bool fValidPacket;                        // Do we have a valid packet?
         unsigned char bInBuf[7];                  // Input buffer we use in the thread to process partial messages.
         char *_pszDevice;
         speed_t _baud;
+        bool _fCancel;                            // Cancel any input threads.
+#ifdef CMDR_USE_XBEE
+        int fdXBee;                                   // file descriptor
+        FILE *pfileXBee;                              // Pointer to file
+        pthread_t tidXBee;                            // Thread Id of our reader thread...
         static void *XBeeThreadProc(void *);
+#endif
+#ifdef CMDR_USE_SOCKET
+        pthread_t tidSocket;
+        static void *SocketThreadProc(void *);
+        static void SocketThreadCleanupProc(void *);
+#endif        
 };
 #endif

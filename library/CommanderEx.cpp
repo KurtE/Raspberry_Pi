@@ -33,6 +33,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <unistd.h>
 #include <pthread.h>
 
+#ifdef CMDR_USE_SOCKET
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#endif
+
+#define DEBUG_SOCKET
+
 /* Constructor */
 Commander::Commander()
 {
@@ -42,6 +50,7 @@ Commander::Commander()
 }
 
 
+#ifdef CMDR_USE_XBEE
 void *Commander::XBeeThreadProc(void *pv)
 {
     Commander *pcmdr = (Commander*)pv;
@@ -54,23 +63,23 @@ void *Commander::XBeeThreadProc(void *pv)
     // We will do all of the stuff to intialize the serial port plus we will spawn off our thread.
     struct termios tc;
 
-    if ((pcmdr->fd = open(pcmdr->_pszDevice, O_RDWR | O_NOCTTY | O_SYNC /* |  O_NONBLOCK */)) == -1) 
+    if ((pcmdr->fdXBee = open(pcmdr->_pszDevice, O_RDWR | O_NOCTTY | O_SYNC /* |  O_NONBLOCK */)) == -1) 
     {
         printf("Open Failed\n");
         return 0;
     }
 
 
-    if ((pcmdr->pfile = fdopen(pcmdr->fd, "r+")) == NULL)
+    if ((pcmdr->pfileXBee = fdopen(pcmdr->fdXBee, "r+")) == NULL)
     {
         return 0;
     }
 
 
-    setvbuf(pcmdr->pfile, NULL, _IONBF, BUFSIZ);
-    fflush(pcmdr->pfile);
+    setvbuf(pcmdr->pfileXBee, NULL, _IONBF, BUFSIZ);
+    fflush(pcmdr->pfileXBee);
 
-    if (tcgetattr(pcmdr->fd, &tc))
+    if (tcgetattr(pcmdr->fdXBee, &tc))
     {
         perror("tcgetattr()");
         return 0;
@@ -122,7 +131,7 @@ void *Commander::XBeeThreadProc(void *pv)
     }
 
 
-    if (tcsetattr(pcmdr->fd, TCSAFLUSH, &tc))
+    if (tcsetattr(pcmdr->fdXBee, TCSAFLUSH, &tc))
     {
         perror("tcsetattr()");
         return 0;
@@ -130,30 +139,30 @@ void *Commander::XBeeThreadProc(void *pv)
 
 
     /* enable input & output transmission */
-    if (tcflow(pcmdr->fd, TCOON | TCION))
+    if (tcflow(pcmdr->fdXBee, TCOON | TCION))
     {
         perror("tcflow()");
         return 0;
     }
 
 
-    fflush(pcmdr->pfile);                             // again discard anything we have not read...
+    fflush(pcmdr->pfileXBee);                             // again discard anything we have not read...
 
     //    printf("Thread Init\n");
 
     // May want to add end code... But for now don't have any defined...
     int ch;
-    for(;;)
+    while(!pcmdr->_fCancel)
     {
         // Lets try using select to block our thread until we have some input available...
         FD_ZERO(&readfs);
-        FD_SET(pcmdr->fd, &readfs);                   // Make sure we are set to wait for our descriptor
+        FD_SET(pcmdr->fdXBee, &readfs);                   // Make sure we are set to wait for our descriptor
         tv.tv_sec = 0;
         tv.tv_usec = 250000;                          // 1/4 of a second...
                                                       // wait until some input is available...
-        select(pcmdr->fd + 1, &readfs, NULL, NULL, &tv);
+        select(pcmdr->fdXBee + 1, &readfs, NULL, NULL, &tv);
 
-        while((ch = getc(pcmdr->pfile)) != EOF)
+        while((!pcmdr->_fCancel) && (ch = getc(pcmdr->pfileXBee)) != EOF)
         {
             if(pcmdr->index == -1)                    // looking for new packet
             {
@@ -196,29 +205,169 @@ void *Commander::XBeeThreadProc(void *pv)
         usleep(1000);                                 // Note: we could maybe simply block the thread until input available!
     }
 
+    printf("Commander - XBee thread exit\n");
+    return 0;
+}
+#endif
+
+#ifdef CMDR_USE_SOCKET
+
+void Commander::SocketThreadCleanupProc(void *pv)
+{
+    printf("Commander - Socket thread exit\n");
+}
+
+void *Commander::SocketThreadProc(void *pv)
+{
+    Commander *pcmdr = (Commander*)pv;
+
+    int listenfd = 0, connfd = 0;
+    struct sockaddr_in serv_addr; 
+
+    char sendBuff[100];
+    time_t ticks; 
+    
+    struct timeval timeout;      
+    timeout.tv_sec = 2; // 2 second timeouts...
+    timeout.tv_usec = 0;
+
+    listenfd = socket(AF_INET, SOCK_STREAM, 0);
+    memset(&serv_addr, '0', sizeof(serv_addr));
+    memset(sendBuff, '0', sizeof(sendBuff)); 
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    serv_addr.sin_port = htons(5000); 
+
+    bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)); 
+
+    listen(listenfd, 10); 
+
+    pthread_cleanup_push(&SocketThreadCleanupProc, pv);
+
+    while(!pcmdr->_fCancel)
+    {
+        printf("Wait for Accept\n");
+        connfd = accept(listenfd, (struct sockaddr*)NULL, NULL); 
+        printf("Accept\n");
+        if (setsockopt (connfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout,
+                sizeof(timeout)) < 0)
+            printf("setsockopt failed\n");
+
+        if (setsockopt (connfd, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout,
+                sizeof(timeout)) < 0)
+            printf("setsockopt failed\n");
+        ticks = time(NULL);
+        snprintf(sendBuff, sizeof(sendBuff), "%.24s\r\n", ctime(&ticks));
+        write(connfd, sendBuff, strlen(sendBuff)); 
+        printf("Did Write\n");
+        sleep(1);
+        
+        // Now lets process messages from this socket client...
+        unsigned char bIn;
+        unsigned char abPacket[7];      // 8 byte packets
+        unsigned char iPacket;
+        unsigned char bChecksum = 0;
+#ifdef DEBUG_SOCKET
+        unsigned char abPacketPrev[7];  
+        unsigned char fChanged;
+#endif        
+        // Lts loop through reading in Commander Packets that start with 0xff
+        iPacket = 0xff;
+        while (read(connfd, &bIn, 1) > 0) {
+            if (iPacket == 0xff) {
+                if (bIn == 0xff) {
+                    iPacket = 0;
+                    bChecksum = 0;
+
+#ifdef DEBUG_SOCKET
+                    fChanged = 0;
+#endif
+                }
+            } else {
+#ifdef DEBUG_SOCKET
+                if (abPacketPrev[iPacket] != bIn) {
+                    fChanged = 1;
+                    abPacketPrev[iPacket] = bIn;
+                }
+#endif                
+                abPacket[iPacket++] = bIn;
+                bChecksum += bIn;
+                if (iPacket == 7) {
+                    // received a whole packet...
+                    if (bChecksum == 0xff) {
+#ifdef DEBUG_SOCKET
+                        if (fChanged) {
+                            printf("%d %d %d %d - %x\n", 
+                                (int)abPacket[0]-128,
+                                (int)abPacket[1]-128,
+                                (int)abPacket[2]-128,
+                                (int)abPacket[3]-128,
+                                abPacket[4] );
+                        }
+#endif
+                        // Lets grab our mutex to keep things consistent
+                        pthread_mutex_lock(&pcmdr->lock);
+                        for (int i=0; i < 6; i++)
+                            pcmdr->vals[i] = abPacket[i];
+                        pcmdr->fValidPacket = true;
+                        pthread_mutex_unlock(&pcmdr->lock);
+                    }
+                    else {
+                        printf("Checksum error: %x\n", bChecksum);
+                    }
+                    iPacket = 0xff;    // setup for next packet
+                }
+            }
+        }
+        printf("Read timed out so close\n");
+        close(connfd);
+        sleep(1);
+    };
+    pthread_cleanup_pop(1);
 
     return 0;
 }
+#endif
 
 
 bool Commander::begin(char *pszDevice,  speed_t baud)
 {
+    int err;
     // Create our lock to make sure we can do stuff safely
     if (pthread_mutex_init(&lock, NULL) != 0)
         return false;
 
+    _fCancel = false;	// Flag to let our thread(s) know to abort.
+#ifdef CMDR_USE_XBEE
     _pszDevice = pszDevice;
     _baud = baud;
     // Now we need to create our thread for doing the reading from the Xbee
-    int err = pthread_create(&tid, NULL, &XBeeThreadProc, this);
+    err = pthread_create(&tidXBee, NULL, &XBeeThreadProc, this);
+    if (err != 0)
+        return false;
+#endif
+#ifdef CMDR_USE_SOCKET
+    // Now we need to create our thread for doing the reading from the Xbee
+    err = pthread_create(&tidSocket, NULL, &SocketThreadProc, this);
     if (err != 0)
         return false;
 
-    return true;
+#endif
 
-    //    Serial.begin(baud);
+
+    return true;
 }
 
+void Commander::end()
+{
+    _fCancel = true;
+#ifdef CMDR_USE_SOCKET
+    // See if the thread goes away.  If not, we can kill it.
+    pthread_cancel(tidSocket);
+
+#endif
+}
 
 /* SouthPaw Support */
 void Commander::UseSouthPaw()

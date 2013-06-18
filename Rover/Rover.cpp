@@ -222,6 +222,7 @@ void SignalHandler(int sig){
         g_aServos[i]->Disable();
     }
 #endif
+    command.end();	// tell the commander to release stuff...
 
    exit(1); 
 
