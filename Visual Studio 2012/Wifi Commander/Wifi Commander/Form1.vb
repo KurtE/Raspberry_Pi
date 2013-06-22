@@ -29,16 +29,18 @@ Public Class Form1
 
     Private Sub Form1_FormClosed(ByVal sender As Object, ByVal e As System.Windows.Forms.FormClosedEventArgs) Handles MyBase.FormClosed
         My.Settings.MainFormSize = Size
-
+        My.Settings.SplitterVal = HorizontalSplit.SplitterDistance
+        My.Settings.WebPage = WebBrowser1.Url.ToString
     End Sub
-    '========= VB Pipe end==============
-
-
 
 
     Private Sub Form1_Load(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles MyBase.Load
         ' Show all available COM ports.
         Size = My.Settings.MainFormSize   ' see if we can save and restore the size
+        If My.Settings.SplitterVal <> 0 Then
+            HorizontalSplit.SplitterDistance = My.Settings.SplitterVal
+        End If
+
 
         For Each sp As String In My.Computer.Ports.SerialPortNames
             ComLB.Items.Add(sp)
@@ -61,6 +63,7 @@ Public Class Form1
             My.Settings.MaxListCount = MaxListCount
         End If
 
+        WebBrowser1.Url = New Uri(My.Settings.WebPage)
 
         ' Lets try to reload the collection of destinations into the list
 
@@ -307,7 +310,7 @@ Public Class Form1
         End If
 
     End Sub
-    Private Sub LCDLB_MouseDown1(ByVal sender As Object, ByVal e As System.Windows.Forms.MouseEventArgs) Handles LCDLB.MouseDown
+    Private Sub LCDLB_MouseDown1(ByVal sender As Object, ByVal e As System.Windows.Forms.MouseEventArgs)
         If e.Button = Windows.Forms.MouseButtons.Right Then
             LCDLB.ContextMenuStrip = PMTerminal
         End If
@@ -384,6 +387,20 @@ Public Class Form1
     Private Sub RobotIPLB_TextChanged(sender As Object, e As EventArgs) Handles RobotIPLB.TextChanged
         My.Settings.RobotIPAddress = RobotIPLB.Text
     End Sub
+
+    Private Sub WebBrowser1_DocumentCompleted(sender As Object, e As WebBrowserDocumentCompletedEventArgs) Handles WebBrowser1.DocumentCompleted
+        WebPage.Text = WebBrowser1.Url.ToString
+    End Sub
+
+    Private Sub WebPage_KeyPress(sender As Object, e As KeyPressEventArgs) Handles WebPage.KeyPress
+
+        If e.KeyChar = Microsoft.VisualBasic.ChrW(Keys.Return) Then
+            WebBrowser1.Navigate(WebPage.Text)
+            e.Handled = True
+        End If
+
+    End Sub
+
 End Class
 
 

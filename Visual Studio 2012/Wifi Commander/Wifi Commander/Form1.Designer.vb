@@ -28,8 +28,6 @@ Partial Class Form1
         Me.Connect = New System.Windows.Forms.Button()
         Me.ComGB = New System.Windows.Forms.GroupBox()
         Me.ComLB = New System.Windows.Forms.ComboBox()
-        Me.LCDGroup = New System.Windows.Forms.GroupBox()
-        Me.LCDLB = New System.Windows.Forms.ListBox()
         Me.Timer1 = New System.Windows.Forms.Timer(Me.components)
         Me.CommThread = New System.ComponentModel.BackgroundWorker()
         Me.PMTerminal = New System.Windows.Forms.ContextMenuStrip(Me.components)
@@ -45,21 +43,30 @@ Partial Class Form1
         Me.ToolStripMenuItem2 = New System.Windows.Forms.ToolStripMenuItem()
         Me.PortGP = New System.Windows.Forms.GroupBox()
         Me.Port = New System.Windows.Forms.TextBox()
+        Me.HorizontalSplit = New System.Windows.Forms.SplitContainer()
+        Me.WebBrowser1 = New System.Windows.Forms.WebBrowser()
+        Me.LCDLB = New System.Windows.Forms.ListBox()
+        Me.WebPageGB = New System.Windows.Forms.GroupBox()
+        Me.WebPage = New System.Windows.Forms.TextBox()
         Me.RobotIPAddrGP.SuspendLayout()
         Me.ComGB.SuspendLayout()
-        Me.LCDGroup.SuspendLayout()
         Me.PMTerminal.SuspendLayout()
         Me.XBeeDLContextMenu.SuspendLayout()
         Me.ContextMenuStrip1.SuspendLayout()
         Me.PortGP.SuspendLayout()
+        CType(Me.HorizontalSplit, System.ComponentModel.ISupportInitialize).BeginInit()
+        Me.HorizontalSplit.Panel1.SuspendLayout()
+        Me.HorizontalSplit.Panel2.SuspendLayout()
+        Me.HorizontalSplit.SuspendLayout()
+        Me.WebPageGB.SuspendLayout()
         Me.SuspendLayout()
         '
         'RobotIPAddrGP
         '
         Me.RobotIPAddrGP.Controls.Add(Me.RobotIPLB)
-        Me.RobotIPAddrGP.Location = New System.Drawing.Point(153, 10)
+        Me.RobotIPAddrGP.Location = New System.Drawing.Point(117, 12)
         Me.RobotIPAddrGP.Name = "RobotIPAddrGP"
-        Me.RobotIPAddrGP.Size = New System.Drawing.Size(164, 47)
+        Me.RobotIPAddrGP.Size = New System.Drawing.Size(138, 47)
         Me.RobotIPAddrGP.TabIndex = 54
         Me.RobotIPAddrGP.TabStop = False
         Me.RobotIPAddrGP.Text = "Robot IP Address"
@@ -67,7 +74,7 @@ Partial Class Form1
         'RobotIPLB
         '
         Me.RobotIPLB.FormattingEnabled = True
-        Me.RobotIPLB.Location = New System.Drawing.Point(1, 19)
+        Me.RobotIPLB.Location = New System.Drawing.Point(6, 19)
         Me.RobotIPLB.Name = "RobotIPLB"
         Me.RobotIPLB.Size = New System.Drawing.Size(152, 21)
         Me.RobotIPLB.TabIndex = 1
@@ -75,9 +82,9 @@ Partial Class Form1
         'Connect
         '
         Me.Connect.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.Connect.Location = New System.Drawing.Point(442, 27)
+        Me.Connect.Location = New System.Drawing.Point(597, 27)
         Me.Connect.Name = "Connect"
-        Me.Connect.Size = New System.Drawing.Size(97, 23)
+        Me.Connect.Size = New System.Drawing.Size(68, 23)
         Me.Connect.TabIndex = 52
         Me.Connect.Text = "Connect"
         Me.Connect.UseVisualStyleBackColor = True
@@ -87,41 +94,18 @@ Partial Class Form1
         Me.ComGB.Controls.Add(Me.ComLB)
         Me.ComGB.Location = New System.Drawing.Point(11, 10)
         Me.ComGB.Name = "ComGB"
-        Me.ComGB.Size = New System.Drawing.Size(136, 47)
+        Me.ComGB.Size = New System.Drawing.Size(100, 47)
         Me.ComGB.TabIndex = 51
         Me.ComGB.TabStop = False
-        Me.ComGB.Text = "Commander Comm Port"
+        Me.ComGB.Text = "Commander Port"
         '
         'ComLB
         '
         Me.ComLB.FormattingEnabled = True
-        Me.ComLB.Location = New System.Drawing.Point(1, 19)
+        Me.ComLB.Location = New System.Drawing.Point(5, 19)
         Me.ComLB.Name = "ComLB"
-        Me.ComLB.Size = New System.Drawing.Size(123, 21)
+        Me.ComLB.Size = New System.Drawing.Size(119, 21)
         Me.ComLB.TabIndex = 1
-        '
-        'LCDGroup
-        '
-        Me.LCDGroup.Anchor = CType((((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Bottom) _
-            Or System.Windows.Forms.AnchorStyles.Left) _
-            Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.LCDGroup.Controls.Add(Me.LCDLB)
-        Me.LCDGroup.Location = New System.Drawing.Point(14, 62)
-        Me.LCDGroup.Name = "LCDGroup"
-        Me.LCDGroup.Size = New System.Drawing.Size(528, 187)
-        Me.LCDGroup.TabIndex = 53
-        Me.LCDGroup.TabStop = False
-        Me.LCDGroup.Text = "LCD"
-        '
-        'LCDLB
-        '
-        Me.LCDLB.Dock = System.Windows.Forms.DockStyle.Fill
-        Me.LCDLB.FormattingEnabled = True
-        Me.LCDLB.Location = New System.Drawing.Point(3, 16)
-        Me.LCDLB.Name = "LCDLB"
-        Me.LCDLB.SelectionMode = System.Windows.Forms.SelectionMode.MultiSimple
-        Me.LCDLB.Size = New System.Drawing.Size(522, 168)
-        Me.LCDLB.TabIndex = 0
         '
         'Timer1
         '
@@ -201,41 +185,108 @@ Partial Class Form1
         'PortGP
         '
         Me.PortGP.Controls.Add(Me.Port)
-        Me.PortGP.Location = New System.Drawing.Point(323, 10)
+        Me.PortGP.Location = New System.Drawing.Point(261, 12)
         Me.PortGP.Name = "PortGP"
-        Me.PortGP.Size = New System.Drawing.Size(113, 47)
+        Me.PortGP.Size = New System.Drawing.Size(97, 47)
         Me.PortGP.TabIndex = 58
         Me.PortGP.TabStop = False
         Me.PortGP.Text = "Port"
         '
         'Port
         '
-        Me.Port.Location = New System.Drawing.Point(0, 15)
+        Me.Port.Location = New System.Drawing.Point(6, 19)
         Me.Port.Name = "Port"
-        Me.Port.Size = New System.Drawing.Size(100, 20)
+        Me.Port.Size = New System.Drawing.Size(85, 20)
         Me.Port.TabIndex = 0
+        '
+        'HorizontalSplit
+        '
+        Me.HorizontalSplit.Anchor = CType((((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Bottom) _
+            Or System.Windows.Forms.AnchorStyles.Left) _
+            Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.HorizontalSplit.Location = New System.Drawing.Point(11, 63)
+        Me.HorizontalSplit.Name = "HorizontalSplit"
+        Me.HorizontalSplit.Orientation = System.Windows.Forms.Orientation.Horizontal
+        '
+        'HorizontalSplit.Panel1
+        '
+        Me.HorizontalSplit.Panel1.Controls.Add(Me.WebBrowser1)
+        '
+        'HorizontalSplit.Panel2
+        '
+        Me.HorizontalSplit.Panel2.Controls.Add(Me.LCDLB)
+        Me.HorizontalSplit.Size = New System.Drawing.Size(664, 586)
+        Me.HorizontalSplit.SplitterDistance = 500
+        Me.HorizontalSplit.TabIndex = 60
+        '
+        'WebBrowser1
+        '
+        Me.WebBrowser1.Anchor = CType((((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Bottom) _
+            Or System.Windows.Forms.AnchorStyles.Left) _
+            Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.WebBrowser1.Location = New System.Drawing.Point(5, 15)
+        Me.WebBrowser1.MinimumSize = New System.Drawing.Size(20, 20)
+        Me.WebBrowser1.Name = "WebBrowser1"
+        Me.WebBrowser1.Size = New System.Drawing.Size(649, 479)
+        Me.WebBrowser1.TabIndex = 60
+        Me.WebBrowser1.Url = New System.Uri("http://192.168.2.100:8080", System.UriKind.Absolute)
+        '
+        'LCDLB
+        '
+        Me.LCDLB.Anchor = CType((((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Bottom) _
+            Or System.Windows.Forms.AnchorStyles.Left) _
+            Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.LCDLB.FormattingEnabled = True
+        Me.LCDLB.Location = New System.Drawing.Point(6, 12)
+        Me.LCDLB.Name = "LCDLB"
+        Me.LCDLB.SelectionMode = System.Windows.Forms.SelectionMode.MultiSimple
+        Me.LCDLB.Size = New System.Drawing.Size(655, 56)
+        Me.LCDLB.TabIndex = 1
+        '
+        'WebPageGB
+        '
+        Me.WebPageGB.Controls.Add(Me.WebPage)
+        Me.WebPageGB.Location = New System.Drawing.Point(364, 12)
+        Me.WebPageGB.Name = "WebPageGB"
+        Me.WebPageGB.Size = New System.Drawing.Size(227, 47)
+        Me.WebPageGB.TabIndex = 59
+        Me.WebPageGB.TabStop = False
+        Me.WebPageGB.Text = "Web Page"
+        '
+        'WebPage
+        '
+        Me.WebPage.Location = New System.Drawing.Point(6, 19)
+        Me.WebPage.Name = "WebPage"
+        Me.WebPage.Size = New System.Drawing.Size(232, 20)
+        Me.WebPage.TabIndex = 0
         '
         'Form1
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
-        Me.ClientSize = New System.Drawing.Size(554, 259)
+        Me.ClientSize = New System.Drawing.Size(690, 661)
+        Me.Controls.Add(Me.WebPageGB)
+        Me.Controls.Add(Me.HorizontalSplit)
         Me.Controls.Add(Me.PortGP)
         Me.Controls.Add(Me.RobotIPAddrGP)
         Me.Controls.Add(Me.Connect)
         Me.Controls.Add(Me.ComGB)
-        Me.Controls.Add(Me.LCDGroup)
-        Me.MinimumSize = New System.Drawing.Size(570, 170)
+        Me.MinimumSize = New System.Drawing.Size(700, 300)
         Me.Name = "Form1"
         Me.Text = "Wifi Commander"
         Me.RobotIPAddrGP.ResumeLayout(False)
         Me.ComGB.ResumeLayout(False)
-        Me.LCDGroup.ResumeLayout(False)
         Me.PMTerminal.ResumeLayout(False)
         Me.XBeeDLContextMenu.ResumeLayout(False)
         Me.ContextMenuStrip1.ResumeLayout(False)
         Me.PortGP.ResumeLayout(False)
         Me.PortGP.PerformLayout()
+        Me.HorizontalSplit.Panel1.ResumeLayout(False)
+        Me.HorizontalSplit.Panel2.ResumeLayout(False)
+        CType(Me.HorizontalSplit, System.ComponentModel.ISupportInitialize).EndInit()
+        Me.HorizontalSplit.ResumeLayout(False)
+        Me.WebPageGB.ResumeLayout(False)
+        Me.WebPageGB.PerformLayout()
         Me.ResumeLayout(False)
 
     End Sub
@@ -244,8 +295,6 @@ Partial Class Form1
     Friend WithEvents Connect As System.Windows.Forms.Button
     Friend WithEvents ComGB As System.Windows.Forms.GroupBox
     Friend WithEvents ComLB As System.Windows.Forms.ComboBox
-    Friend WithEvents LCDGroup As System.Windows.Forms.GroupBox
-    Friend WithEvents LCDLB As System.Windows.Forms.ListBox
     Friend WithEvents Timer1 As System.Windows.Forms.Timer
     Friend WithEvents CommThread As System.ComponentModel.BackgroundWorker
     Friend WithEvents PMTerminal As System.Windows.Forms.ContextMenuStrip
@@ -261,5 +310,10 @@ Partial Class Form1
     Friend WithEvents ToolStripMenuItem2 As System.Windows.Forms.ToolStripMenuItem
     Friend WithEvents PortGP As System.Windows.Forms.GroupBox
     Friend WithEvents Port As System.Windows.Forms.TextBox
+    Friend WithEvents HorizontalSplit As System.Windows.Forms.SplitContainer
+    Friend WithEvents WebBrowser1 As System.Windows.Forms.WebBrowser
+    Friend WithEvents LCDLB As System.Windows.Forms.ListBox
+    Friend WithEvents WebPageGB As System.Windows.Forms.GroupBox
+    Friend WithEvents WebPage As System.Windows.Forms.TextBox
 
 End Class
