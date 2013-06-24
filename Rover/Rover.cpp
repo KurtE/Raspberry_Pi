@@ -279,7 +279,7 @@ int main(int argc, char *argv[])
 
     g_MotorsDriver.Init();
 
-    Serial.println("Botboardduino Rover Program Startup");
+    Serial.println("Kurt's Rover Program Startup\n");
  
     g_fDebugOutput = false;			// start with it off!
     g_fShowDebugPrompt = true;
@@ -549,7 +549,7 @@ boolean TerminalMonitor(void)
     int ch;
     // See if we need to output a prompt.
     if (g_fShowDebugPrompt) {
-        Serial.println("Arduino Rover Monitor");
+        Serial.println("Rover Debug Monitor");
         Serial.println("D - Toggle debug on or off");
 #ifdef BBB_SERVO_SUPPORT
         Serial.println("O - Enter Servo offset mode");
@@ -905,14 +905,14 @@ void RoverConfigData::Load(void) {
             for(pb+=2; pb < ((uint8_t*)this + sizeof(RoverConfigData)); pb++)
                 bCalcChecksum += *pb;
             if (bCalcChecksum == bChecksum) {
-                printf("Rover Config Data Valid");
+                printf("Rover Config Data Valid\n");
                 fValid = true;
             }
         }
     }
 
     if (!fValid) {
-        printf("Rover Config Data - Using defaults");
+        printf("Rover Config Data - Using defaults\n");
         aServos[RoverConfigData::PAN].wCenter = 1500;
         aServos[RoverConfigData::PAN].wMin = PAN_MIN;
         aServos[RoverConfigData::PAN].wMax = PAN_MAX;
@@ -936,7 +936,6 @@ void RoverConfigData::Save(void) {
         bChecksum += *pb;
     
     
-    std::fstream out;
     FILE * pf = fopen("/usr/share/rover/roverrc", "w");
     if (!pf) {
         int status = mkdir("/usr/share/rover", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
@@ -949,6 +948,6 @@ void RoverConfigData::Save(void) {
         fclose(pf);
     }
     else {
-        printf("Failed to open otuput file");
+        printf("Failed to open otuput file\n");
     }
 }

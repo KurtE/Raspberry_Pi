@@ -9,6 +9,12 @@ MAIN_OBJS:= $(subst .cpp,.o,$(SOURCES))
 
 MAIN_DEPS:= $(subst .cpp,.d,$(SOURCES))
 
+#~~~~~~~~~~~~~~~~~~~~ Define Processor ~~~~~~~~~~~~~~~~~~~~
+ifeq ($(OSTYPE),linux-gnueabi)
+PROC_DEFINE = -DPROC_BBB
+else
+PROC_DEFINE = -DPROC_RPI
+endif
 #~~~~~~~~~~~~~~~~~~~~ Include Directories ~~~~~~~~~~~~~~~~~~~~
 INCLUDE_DIRS = -I. -I../library
 
@@ -37,7 +43,7 @@ endif
 #TCHAIN_PREFIX=x86_64-linux-gnu-
 
 CXX = $(TCHAIN_PREFIX)g++
-CXXFLAGS = $(COMPILE_OPTS) $(INCLUDE_DIRS)
+CXXFLAGS = $(COMPILE_OPTS) $(INCLUDE_DIRS) $(PROC_DEFINE)
 
 #~~~~~~~~~~~~~~~~~~~~ all ~~~~~~~~~~~~~~~~~~~~
 

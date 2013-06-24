@@ -15,7 +15,9 @@
 // Packet Serial Mode
 #define PACKETS_ADDRESS 128    //  Address of the device
 
+#ifdef PROC_BBB
 #define BBB_SERVO_SUPPORT
+#endif
 
 #define OPT_PCMSOUND
 
