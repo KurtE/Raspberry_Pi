@@ -92,6 +92,9 @@ bring this utility back up by typing:
 sudo raspi-config
 
 
+Adding Users
+------------
+
 To Add a different user other than pi, you can do something like: 
 sudo adduser kurt
 
@@ -101,6 +104,20 @@ sudo adduser kurt sudo
 
 if you wish to make the new user act like the user pi, as with regards to sudo command, you can edit the information:
 sudo nano /etc/sudoerrs
+
+Also some devices require special permissions or the like to work properly.  Example USB serial devices
+need permission.  You can either get this by running the command using sudo, or you in this case you can add the
+user to the dialout group: sudo adduser kurt dialout
+
+To list a complete list of users and groups you can try:
+cat /etc/passwd | cut -d: -f1
+cat /etc/group |cut -d: -f1 
+
+If something works for one user such as pi but not for another user like kurt, you can also try using the
+groups command and see what the differences are and maybe add some to the user that is not working.
+groups
+groups pi
+
 
 Setup WiFI on RPI
 -----------------

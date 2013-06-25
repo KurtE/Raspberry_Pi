@@ -151,8 +151,18 @@ static byte     g_bButtonsPrev;
 boolean         g_fControllerInUse;
 
 // Debug stuff
-boolean g_fShowDebugPrompt;
-boolean g_fDebugOutput;
+boolean         g_fShowDebugPrompt;
+boolean         g_fDebugOutput;
+
+//  Variables to use to keep from printing too often...
+#ifdef DEBUG
+short           RStickYPrev;
+short           RStickXPrev;
+short           LStickYPrev;
+short           LStickXPrev;
+short           sRDrivePWMPrev;
+short           sLDrivePWMPrev;
+#endif
 
 
 #if MNUMSERVOS > 0
@@ -339,17 +349,31 @@ int main(int argc, char *argv[])
             sRDrivePWM = max(min((sRDrivePWM * g_bGear) / 4, 127), -127);    // This should keep up in the -127 to +127 range and scale it depending on what gear we are in.
             sLDrivePWM = max(min((sLDrivePWM * g_bGear) / 4, 127), -127);
 
-    #ifdef DEBUG
+#ifdef DEBUG
             if (g_fDebugOutput) {
-                Serial.print(RStickY, DEC);
-                Serial.print(",");
-                Serial.print(RStickX, DEC);
-                Serial.print(" - ");
-                Serial.print(sRDrivePWM, DEC);
-                Serial.print(",");
-                Serial.println(sLDrivePWM, DEC);
+                if ((RStickY != RStickYPrev) || (RStickX != RStickXPrev) ||
+                        (LStickY != LStickYPrev) || (LStickX != LStickXPrev) ||
+                        (sRDrivePWM != sRDrivePWMPrev) || (sLDrivePWM != sLDrivePWMPrev)) {
+                    Serial.print(LStickY, DEC);
+                    Serial.print(",");
+                    Serial.print(LStickX, DEC);
+                    Serial.print(" ");
+                    Serial.print(RStickY, DEC);
+                    Serial.print(",");
+                    Serial.print(RStickX, DEC);
+                    Serial.print(" - ");
+                    Serial.print(sLDrivePWM, DEC);
+                    Serial.print(",");
+                    Serial.println(sRDrivePWM, DEC);
+                    LStickYPrev = LStickY;
+                    LStickXPrev = LStickX;
+                    RStickYPrev = RStickY;
+                    RStickXPrev = RStickX;
+                    sRDrivePWMPrev = sRDrivePWM;
+                    sLDrivePWMPrev = sLDrivePWM;
+                }
             }
-    #endif
+#endif
         // Call our motors driver code which may change depending on how we talk to the motors...
             g_MotorsDriver.RDrive(sRDrivePWM);
             g_MotorsDriver.LDrive(sLDrivePWM);

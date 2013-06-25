@@ -39,7 +39,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <arpa/inet.h>
 #endif
 
-#define DEBUG_SOCKET
+//#define DEBUG_SOCKET
 
 /* Constructor */
 Commander::Commander()
