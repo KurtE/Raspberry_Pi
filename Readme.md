@@ -91,6 +91,31 @@ the size of the SD card, plus time zone, keyboard type... If I missed changing a
 bring this utility back up by typing: 
 sudo raspi-config
 
+Configure BeagleBone Black
+--------------------------
+
+Setup for date and time update
+    ntpdate us.pool.ntp.org
+    nano /etc/default/ntpdate   (Set us.pool.ntp.org in NTPSERVERS)
+
+    rm /etc/localtime
+    ln -s /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
+
+Nameserver may not be set properly
+    echo nameserver 8.8.8.8 > /etc/resolv.conf
+    
+For the Root, I exported a few things in the ~/.profile
+    export SLOTS=/sys/devices/bone_capemgr.8/slots
+    export PINS=/sys/kernel/debug/pinctrl/44e10800.pinmux/pins
+    export OSTYPE
+    ln -s /dev/ttyO1 /dev/ttyXBEE
+    ln -s /dev/ttyO2 /dev/ttyRCLAW
+Note in the above the bone_capemgr.8 may change from build to build previously was .9
+    
+Also as a way to force the date to be set properly, I added at the endo of ~/.bashrc 
+    ntpdate-sync
+(I also enabled color coding of lines and the like)
+
 
 Adding Users
 ------------
@@ -108,6 +133,12 @@ sudo nano /etc/sudoerrs
 Also some devices require special permissions or the like to work properly.  Example USB serial devices
 need permission.  You can either get this by running the command using sudo, or you in this case you can add the
 user to the dialout group: sudo adduser kurt dialout
+
+To find out which group you may need for a device, do a ls -l for the device.  Example:
+    kurt@raspberrypi ~ $ ls -l /dev/ttyUSB*
+    crw-rw---T 1 root dialout 188, 0 Dec 31  1969 /dev/ttyUSB0
+    crw-rw---T 1 root dialout 188, 1 Jun 25 08:30 /dev/ttyUSB1
+
 
 To list a complete list of users and groups you can try:
 cat /etc/passwd | cut -d: -f1
@@ -128,6 +159,18 @@ that probably will have a longer range. On the first Pi I did a bunch of manual 
 up and working with my network. This time I simply had the GUI up (startX) and ran the Wifi Config
  program on the desktop and was able to see my network, choose the right AP, entered in the WPA key
  and so far it appears to work  
+ 
+ setup WiFi on BBBK
+ ------------------
+ There are issues with the reliablility of the Wifi Dongle that comes with the current Angstrom builds.
+ 
+ I have followed others and currently go through the process of rebuilding the driver for the rtl8192...
+ Instructions are up at: 
+     http://www.codealpha.net/864/how-to-set-up-a-rtl8192cu-on-the-beaglebone-black-bbb/
+ Note: There is a step missing in the instructions that you need to build the scripts.
+    cd /usr/src/kernel
+    make scripts
+ 
 
 Setup tty Device on RPI
 -----------------------
@@ -275,8 +318,9 @@ BBB PWM Support
 
 I am now playing with trying to have Servos supported directly on the Beagle Bone Black.  There are several threads 
 up about enabling PWM support up on the BeagleBoard.org forums.  Also a member created a C++ library for it, which
-I borrowed the code from as part of my library.  More details up on the 
-[thread](https://groups.google.com/forum/embed/?place=forum%2Fbeagleboard&showsearch=true&showpopout=true&showtabs=true&hideforumtitle=true&parenturl=http%3A%2F%2Fbeagleboard.org%2FCommunity%2FForums%3Futm_expid%3D6702460-6%26utm_referrer%3Dhttp%253A%252F%252Fbeagleboard.org%252FSupport%252FHardware%252520Support#!category-topic/beagleboard/C2tzvRYk1Wg)
+I borrowed the code from as part of my library.  More details up on a thread on the beagleBoard.org forums.
+Do a search for "c++ pwm" and should be thread by Saad Ahmad.  Will point you through to a github Project:
+https://github.com/SaadAhmad/beaglebone-black-cpp-PWM
 
 I have an updated copy of his library code included in mine plus a simple PWM test case, which enables two PWM pins and has 
 them pulse from 500-2500us pulses.
@@ -287,8 +331,8 @@ Likewise he created duplicates of the device tree overlays, that initialized the
 channels period to be set before they are initialized.  They have names like: sc_pwm_P8_13-00A0.dtbo
 which must be coppied into: /lib/firmware.
 
-May upload some precompiled ones here such that you don't have to build the kernel to get them. 
-    
+When I reloaded the EmmC with the latest firmware 0620 I used his prebuilt binaries and instructions in his Readme.md and
+they appeared to work.    
 
 
 Warning
