@@ -49,15 +49,15 @@ class Commander
     public:
         Commander();
         bool begin(char *pszComm, speed_t baud);
-        void end();                               // release any resources.
-        void UseSouthPaw();                       // enable southpaw configuration
-        int ReadMsgs();                           // must be called regularly to clean out Serial buffer
+        void end();                              // release any resources.
+        void UseSouthPaw();                      // enable southpaw configuration
+        int ReadMsgs();                          // must be called regularly to clean out Serial buffer
 
         // joystick values are -125 to 125
-        signed char rightV;                       // vertical stick movement = forward speed
-        signed char rightH;                       // horizontal stick movement = sideways or angular speed
-        signed char leftV;                        // vertical stick movement = tilt
-        signed char leftH;                        // horizontal stick movement = pan (when we run out of pan, turn body?)
+        signed char rightV;                      // vertical stick movement = forward speed
+        signed char rightH;                      // horizontal stick movement = sideways or angular speed
+        signed char leftV;                       // vertical stick movement = tilt
+        signed char leftH;                       // horizontal stick movement = pan (when we run out of pan, turn body?)
         // 0-1023, use in extended mode
         int pan;
         int tilt;
@@ -66,26 +66,27 @@ class Commander
         unsigned char buttons;                    //
         unsigned char ext;                        // Extended function set
 
-        // Hooks are used as callbacks for button presses -- NOT IMPLEMENT YET
+        // Feedback capabilities - Mainly for Sockets, but can also use with my debug stuff with XBees...
+        void message(char *psz);                 //
 
     private:
         // internal variables used for reading messages
-        unsigned char vals[6];                    // temporary values, moved after we confirm checksum
-        int index;                                // -1 = waiting for new packet
+        unsigned char vals[6];                   // temporary values, moved after we confirm checksum
+        int index;                               // -1 = waiting for new packet
         int checksum;
         unsigned char status;
 
         //Private stuff for Linux threading and file descriptor, and open file...
-        pthread_mutex_t lock;                     // A lock to make sure we don't walk over ourself...
-        bool fValidPacket;                        // Do we have a valid packet?
-        unsigned char bInBuf[7];                  // Input buffer we use in the thread to process partial messages.
+        pthread_mutex_t lock;                    // A lock to make sure we don't walk over ourself...
+        bool fValidPacket;                       // Do we have a valid packet?
+        unsigned char bInBuf[7];                 // Input buffer we use in the thread to process partial messages.
         char *_pszDevice;
         speed_t _baud;
-        bool _fCancel;                            // Cancel any input threads.
+        bool _fCancel;                           // Cancel any input threads.
 #ifdef CMDR_USE_XBEE
-        int fdXBee;                                   // file descriptor
-        FILE *pfileXBee;                              // Pointer to file
-        pthread_t tidXBee;                            // Thread Id of our reader thread...
+        int fdXBee;                              // file descriptor
+        FILE *pfileXBee;                         // Pointer to file
+        pthread_t tidXBee;                       // Thread Id of our reader thread...
         static void *XBeeThreadProc(void *);
 #endif
 #ifdef CMDR_USE_SOCKET
