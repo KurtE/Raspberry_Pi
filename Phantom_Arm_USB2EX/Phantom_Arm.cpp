@@ -264,7 +264,13 @@ void setup() {
 		printf("Commander Begin failed\n");
 		return;
 	}    
-
+  
+  // Lets try a delay at the start
+  delay(250);
+  
+  // Try first thing talks on AX net
+  Serial.println(dxl_read_word(1, AX_PRESENT_POSITION_L), DEC);
+  
   // Next initialize the Bioloid
   printf("Before poseSize\n");
   bioloid.poseSize(CNT_SERVOS);
@@ -274,7 +280,7 @@ void setup() {
     bioloid.readPose();
   printf("After readPose\n");
   for (int i=1; i <= CNT_SERVOS; i++) {
-    Serial.print(bioloid.getCurPoseByIndex(i), DEC);
+    Serial.print(bioloid.getCurPoseByIndex(i-1), DEC);
     Serial.print("=?");
     Serial.println(dxl_read_word(i, AX_PRESENT_POSITION_L), DEC);
   }  

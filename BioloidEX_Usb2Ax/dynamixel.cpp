@@ -199,7 +199,9 @@ void dxl_rx_packet()
 
 void dxl_txrx_packet()
 {
+//    printf(" BTX");
 	dxl_tx_packet();
+//    printf(" ATX");
 
 	if( gbCommStatus != COMM_TXSUCCESS )
 		return;	
@@ -207,6 +209,7 @@ void dxl_txrx_packet()
 	do{
 		dxl_rx_packet();		
 	}while( gbCommStatus == COMM_RXWAITING );	
+//    printf(" ARX");
 }
 
 int dxl_get_result()
