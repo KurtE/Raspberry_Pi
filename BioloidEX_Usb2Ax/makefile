@@ -1,65 +1,57 @@
+#try to create a static library of code for me to use for different programs
 #~~~~~~~~~~~~~~~~~~~~ Output File Name ~~~~~~~~~~~~~~~~~~~~
-MAIN_OUT = Phantom_Arm
+MAIN_OUT = libBioloidEX.a
 
 #~~~~~~~~~~~~~~~~~~~~ Source Files ~~~~~~~~~~~~~~~~~~~~
-SOURCES = \
-		Phantom_Arm.cpp 
+COMMON_SOURCES = \
+		BioloidEX.cpp \
+		dxl_hal.cpp \
+		dynamixel.cpp
+
+SOURCES = $(COMMON_SOURCES) $(EXTRA_SOURCES)
 
 MAIN_OBJS:= $(subst .cpp,.o,$(SOURCES))
 
 MAIN_DEPS:= $(subst .cpp,.d,$(SOURCES))
 
 #~~~~~~~~~~~~~~~~~~~~ Include Directories ~~~~~~~~~~~~~~~~~~~~
-INCLUDE_DIRS = -I. -I../library -I../BioloidEX
-
-
-#~~~~~~~~~~~~~~~~~~~~ Library Directories ~~~~~~~~~~~~~~~~~~~~
 ifeq ($(OSTYPE),linux-gnueabi)
-LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../BioloidEX -L../library
+INCLUDE_DIRS = -I. 
+
 else
-LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../BioloidEX -L../library
+INCLUDE_DIRS = -I. 
 endif
 
-
+#~~~~~~~~~~~~~~~~~~~~ Library Directories ~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~~~~~~~~~~~~~~ Compiler Options ~~~~~~~~~~~~~~~~~~~~
-COMPILE_OPTS = -pedantic -g -O2 -fno-rtti -Wno-write-strings
-
+COMPILE_OPTS = -Wall -pedantic -g -O2 -fno-rtti -Wno-write-strings
 
 #~~~~~~~~~~~~~~~~~~~~ Linker Options ~~~~~~~~~~~~~~~~~~~~
-LDFLAGS = $(LIBRARY_DIRS) -lpthread -lBioloidEX -lArduinoPort -lasound -lrt
 
 #~~~~~~~~~~~~~~~~~~~~ Toolchain Prefix ~~~~~~~~~~~~~~~~~~~~
 ifeq ($(OSTYPE),linux-gnueabi)
+#BBBk
 TCHAIN_PREFIX=arm-angstrom-linux-gnueabi-
 else
+#RPI
 TCHAIN_PREFIX=arm-linux-gnueabihf-
 endif
+
 #TCHAIN_PREFIX=x86_64-linux-gnu-
 
 CXX = $(TCHAIN_PREFIX)g++
 CXXFLAGS = $(COMPILE_OPTS) $(INCLUDE_DIRS)
+AR = ar
+ARFLAGS = rcs
 
 #~~~~~~~~~~~~~~~~~~~~ all ~~~~~~~~~~~~~~~~~~~~
-
-all: LIBRARY BioloidEX begin gccversion build end
-
-#~~~~~~~~~~~~~~~~~~~~ library ~~~~~~~~~~~~~~~~~~~~
-LIBRARY:
-	cd ../library; $(MAKE)
-
-#~~~~~~~~~~~~~~~~~~~~ library ~~~~~~~~~~~~~~~~~~~~
-BioloidEX:
-	cd ../BioloidEX; $(MAKE)
-
-
+all: begin gccversion build end
 
 #~~~~~~~~~~~~~~~~~~~~ build ~~~~~~~~~~~~~~~~~~~~
-
-
 build: $(MAIN_OUT)
 
-$(MAIN_OUT): $(MAIN_OBJS) ../library/libArduinoPort.a ../BioloidEX/libBioloidEX.a
-	$(CXX) $(CXXFLAGS) $(MAIN_OBJS) -o $(MAIN_OUT) $(LDFLAGS)
+$(MAIN_OUT): $(MAIN_OBJS)
+	$(AR) $(ARFLAGS) $(MAIN_OUT) $(MAIN_OBJS)
 
 MSG_BEGIN = -------- begin --------
 MSG_END = --------  end  --------
@@ -68,6 +60,7 @@ MSG_END = --------  end  --------
 begin:
 	@echo
 	@echo $(MSG_BEGIN)
+	@echo ${OSTYPE}
 
 end:
 	@echo $(MSG_END)
@@ -80,11 +73,9 @@ gccversion:
 clean: begin clean_list end
 
 clean_list:
-	-rm $(MAIN_OBJS)
-	-rm $(MAIN_OUT)
-	-rm $(MAIN_DEPS)
-	-cd ../library ; make clean
-	-cd ../BioloidEX ; make clean
+	-rm -f $(MAIN_OBJS)
+	-rm -f $(MAIN_OUT)
+	-rm -f $(MAIN_DEPS)
 
 #~~~~~~~~~~~~~~~~~~~~ backup ~~~~~~~~~~~~~~~~~~~~
 backup: clean
@@ -94,6 +85,6 @@ backup: clean
 include $(subst .cpp,.d,$(SOURCES))
 
 %.d: %.cpp
-	$(CC) -M $(CXXFLAGS) $< > $@.$$$$; \
+	$(CC) -M $(CPPFLAGS) $< > $@.$$$$; \
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;  \
 	rm -f $@.$$$$

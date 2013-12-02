@@ -266,13 +266,16 @@ void setup() {
 	}    
 
   // Next initialize the Bioloid
-  bioloid.poseSize = CNT_SERVOS;
+  printf("Before poseSize\n");
+  bioloid.poseSize(CNT_SERVOS);
 
   // Read in the current positions...
   printf("Before readPose\n");
     bioloid.readPose();
   printf("After readPose\n");
   for (int i=1; i <= CNT_SERVOS; i++) {
+    Serial.print(bioloid.getCurPoseByIndex(i), DEC);
+    Serial.print("=?");
     Serial.println(dxl_read_word(i, AX_PRESENT_POSITION_L), DEC);
   }  
     
@@ -343,9 +346,9 @@ void loop() {
       if (fChanged && (g_bIKStatus != IKS_ERROR)) {
         MoveArmTo(sBase, sShoulder, sElbow, sWrist, sWristRot, sGrip, 100, true);
       }
-      else if (bioloid.interpolating() > 0) {
-        bioloid.interpolateStep();
-      }
+//      else if (bioloid.interpolating() > 0) {
+//        bioloid.interpolateStep();
+//      }
     }
     else {
       g_fArmActive = true;
@@ -356,9 +359,9 @@ void loop() {
     ulLastMsgTime = millis();    // remember when we last got a message...
   }
   else {
-    if (bioloid.interpolating() > 0) {
-      bioloid.interpolateStep();
-    }
+//    if (bioloid.interpolating() > 0) {
+//      bioloid.interpolateStep();
+//    }
     // error see if we exceeded a timeout
     if (g_fArmActive && ((millis() - ulLastMsgTime) > ARBOTIX_TO)) {
       PutArmToSleep();
@@ -499,11 +502,11 @@ void MoveArmToHome(void) {
 
   if (g_bIKMode != IKM_BACKHOE) {
     g_bIKStatus = doArmIK(true, 0, (2*ElbowLength)/3+WristLength, BaseHeight+(2*ShoulderLength)/3, 0);
-    MoveArmTo(sBase, sShoulder, sElbow, sWrist, 512, 256, 500, true);
+    MoveArmTo(sBase, sShoulder, sElbow, sWrist, 512, 256, 2000, true);
   }
   else {
     g_bIKStatus = IKS_SUCCESS;  // assume sucess so we will continue to move...
-    MoveArmTo(512, 512, 330, 690, 512, 256, 500, true);
+    MoveArmTo(512, 512, 330, 690, 512, 256, 2000, true);
   }
 }
 
@@ -561,7 +564,7 @@ void MoveArmTo(int sBase, int sShoulder, int sElbow, int sWrist, int sWristRot, 
   // Need to do it before setNextPos calls as this
   // is used in the interpolating code...
   while (bioloid.interpolating() > 0) {
-    bioloid.interpolateStep();
+//    bioloid.interpolateStep();
     delay(3);
   }
 
@@ -603,15 +606,15 @@ void MoveArmTo(int sBase, int sShoulder, int sElbow, int sWrist, int sWristRot, 
     wTime = ((long)sMaxDelta*1000L)/ MAX_SERVO_DELTA_PERSEC;
   }
 
-  bioloid.interpolateSetup(wTime);
-
+  int err = bioloid.interpolateSetup(wTime);
+  printf("Interpolate Setup returned: %d\n\r", err);
   // Do at least the first movement
-  bioloid.interpolateStep();
+//  bioloid.interpolateStep();
 
   // And if asked to, wait for the previous move to complete...
   if (fWait) {
     while (bioloid.interpolating() > 0) {
-      bioloid.interpolateStep();
+//      bioloid.interpolateStep();
       delay(3);
     }
   }

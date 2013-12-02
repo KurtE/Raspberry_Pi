@@ -1,0 +1,12 @@
+=================================================
+    Dynamixel SDK for platform porting  v1.01
+=================================================
+
+- Fixed bug that status packet included error flag is treated "RX_TIMEOUT".
+
+
+=================================================
+    Dynamixel SDK for platform porting  v1.00
+=================================================
+
+- First released

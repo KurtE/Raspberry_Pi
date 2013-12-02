@@ -27,7 +27,6 @@
  */
 
 #include <stdint.h>
-#define boolean uint8_t
 
 /* pose engine runs at 30Hz (33ms between frames) 
    recommended values for interpolateSetup are of the form X*BIOLOID_FRAME_LENGTH - 1 */
@@ -58,6 +57,7 @@ class BioloidControllerEx
     void writePose();                           // write a pose out to the servos
     int getCurPose(int id);                     // get a servo value in the current pose
     int getNextPose(int id);                    // get a servo value in the next pose
+    int getNextPoseByIndex(int index);           // get a servo value in the next pose
     void setNextPose(int id, int pos);          // set a servo value in the next pose
     void setNextPoseByIndex(int index, int pos);  // set a servo value by index for next pose
     void setId(int index, int id);              // set the id of a particular storage index
@@ -65,8 +65,8 @@ class BioloidControllerEx
     
     /* Pose Engine */
     void interpolateSetup(int time);            // calculate speeds for smooth transition
-    void interpolateStep(boolean fWait=true);                     // move forward one step in current interpolation  
-    unsigned char interpolating;                // are we in an interpolation? 0=No, 1=Yes
+    void interpolateStep(uint8_t fWait=true);                     // move forward one step in current interpolation  
+    uint8_t interpolating(void);                // are we in an interpolation? 0=No, 1=Yes
     unsigned char runningSeq;                   // are we running a sequence? 0=No, 1=Yes 
     int poseSize;                               // how many servos are in this pose, used by Sync()
     
@@ -104,6 +104,7 @@ class BioloidControllerEx
     unsigned long nextframe_;                   //    
     transition_t * sequence;                    // sequence we are running
     int transitions;                            // how many transitions we have left to load
+    uint8_t interpolating_ ;                    // Actual state.
    
 };
 #endif

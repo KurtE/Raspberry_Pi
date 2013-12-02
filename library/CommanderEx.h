@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // Also Added support to optionally use network sockets to 
 
 #define CMDR_USE_XBEE
-#define CMDR_USE_SOCKET
+//#define CMDR_USE_SOCKET
 
 #ifndef Commander_h
 #define Commander_h

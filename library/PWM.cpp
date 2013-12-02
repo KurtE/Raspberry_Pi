@@ -6,7 +6,7 @@
  */
 #include "PWM.h"
 #include <unistd.h>
-#define DEBUG_VERBOSE_OUTPUT 1
+//#define DEBUG_VERBOSE_OUTPUT 1
 
 namespace PWM
 {

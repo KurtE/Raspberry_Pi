@@ -43,7 +43,7 @@ BioloidControllerEx::BioloidControllerEx(long baud){
     nextpose_[i] = 512;
   }
   frameLength = BIOLOID_FRAME_LENGTH;
-  interpolating = 0;
+  interpolating_ = 0;
   playing = 0;
   nextframe_ = millis();
   
@@ -68,7 +68,7 @@ void BioloidControllerEx::setup(int servo_cnt){
     pose_[i] = 512;
     nextpose_[i] = 512;
   }
-  interpolating = 0;
+  interpolating_ = 0;
   playing = 0;
   nextframe_ = millis();
 }
@@ -117,6 +117,11 @@ void BioloidControllerEx::writePose(){
 
 /* set up for an interpolation from pose to nextpose over TIME 
  milliseconds by setting servo speeds. */
+uint8_t  BioloidControllerEx::interpolating(void) {
+    return interpolating_;
+}
+
+    
 void BioloidControllerEx::interpolateSetup(int time){
   int i;
   int frames = (time/frameLength) + 1;
@@ -130,12 +135,12 @@ void BioloidControllerEx::interpolateSetup(int time){
       speed_[i] = (pose_[i]-nextpose_[i])/frames + 1;
     }
   }
-  interpolating = 1;
+  interpolating_ = 1;
 }
 /* interpolate our pose, this should be called at about 30Hz. */
 #define WAIT_SLOP_FACTOR 10  
-void BioloidControllerEx::interpolateStep(boolean fWait){
-  if(interpolating == 0) return;
+void BioloidControllerEx::interpolateStep(uint8_t fWait){
+  if(interpolating_ == 0) return;
   int i;
   int complete = poseSize;
   if (!fWait) {
@@ -170,7 +175,7 @@ void BioloidControllerEx::interpolateStep(boolean fWait){
       }       
     }
   }
-  if(complete <= 0) interpolating = 0;
+  if(complete <= 0) interpolating_ = 0;
   writePose();      
 }
 
@@ -190,6 +195,15 @@ int BioloidControllerEx::getNextPose(int id){
   }
   return -1;
 }
+
+int BioloidControllerEx::getNextPoseByIndex(int index){
+  if (index < poseSize) {
+    return (nextpose_[index] >> BIOLOID_SHIFT);
+  }
+  return -1;
+}
+
+
 /* set a servo value in the next pose */
 void BioloidControllerEx::setNextPose(int id, int pos){
   for(int i=0; i<poseSize; i++){
@@ -221,7 +235,7 @@ void BioloidControllerEx::playSeq( const transition_t  * addr ){
 /* keep playing our sequence */
 void BioloidControllerEx::play(){
   if(playing == 0) return;
-  if(interpolating > 0){
+  if(interpolating_ > 0){
     interpolateStep();
   }
   else{  // move onto next pose
