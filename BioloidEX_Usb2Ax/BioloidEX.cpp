@@ -49,7 +49,8 @@ BioloidControllerEx::BioloidControllerEx(long baud){
 //  nextframe_ = millis();
   
   //ax12Init(baud);  
-  if(dxl_initialize(0, 1000000) == 0) {
+  // Warning not baud that gets passed but the baud index...
+  if(dxl_initialize(0, 1) == 0) {
 	//printf("Failed to open USBDynamixel\n");
   }	
 }

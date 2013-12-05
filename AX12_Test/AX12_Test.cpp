@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
 //====================================================================================================
 void setup() {
   Serial.begin();  // start off the serial port.  
-  if(dxl_initialize(0, 1000000) == 0) {
+  if(dxl_initialize(0, 1) == 0) {
 	//printf("Failed to open USBDynamixel\n");
   }	
 
@@ -551,9 +551,11 @@ int ax12GetRegister(int id, int regstart, int length) {
 }
 
 void ax12SetRegister(int id, int regstart, int data) {
+    dxl_write_byte(id, regstart, data & 0xff);
 }
 
 extern void ax12SetRegister2(int id, int regstart, int data) {
+    dxl_write_word(id, regstart, data);
 }
 
 
