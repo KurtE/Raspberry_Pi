@@ -71,7 +71,7 @@ int dxl_hal_open(int deviceIndex, float baudrate)
 	dxl_hal_close();
 	
 	gfByteTransTime = (float)((1000.0f / baudrate) * 12.0f);
-	
+    
 	strcpy(gDeviceName, dev_name);
 	memset(&newtio, 0, sizeof(newtio));
 	dxl_hal_close();
@@ -162,6 +162,7 @@ void dxl_hal_set_timeout( int NumRcvByte )
 {
 	glStartTime = myclock();
 	gfRcvWaitTime = (float)(gfByteTransTime*(float)NumRcvByte + 5.0f);
+//    printf("STO %d, %ld\n\r", NumRcvByte, (long)gfRcvWaitTime);
 }
 
 int dxl_hal_timeout(void)
@@ -170,8 +171,10 @@ int dxl_hal_timeout(void)
 	
 	time = myclock() - glStartTime;
 	
-	if(time > gfRcvWaitTime)
+	if(time > (long)gfRcvWaitTime) {
+//        printf("TO %ld %ld\n\r", time, (long)gfRcvWaitTime);
 		return 1;
+    }    
 	else if(time < 0)
 		glStartTime = myclock();
 		

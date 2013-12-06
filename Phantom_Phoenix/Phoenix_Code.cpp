@@ -1267,6 +1267,7 @@ void GaitSelect(void)
         if (il < (CNT_LEGS-1))
             DBGSerial.print(", ");
     }
+  }
 #endif
 }
 

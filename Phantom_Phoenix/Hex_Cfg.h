@@ -34,7 +34,8 @@
 #define XBEE_DEBUG_OUTPUT                         // use our xbee serial class to do debug stuff
 #define DBGSerial XBDSerial
 #endif
-//#define DBGSerial         Serial
+
+#define DBGSerial         DBGSerialWrapper
 
 // Define other optional compnents to be included or not...
 //#define PHANTOMX_V2     // Some code may depend on it being a V2 PhantomX

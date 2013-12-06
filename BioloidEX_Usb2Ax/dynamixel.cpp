@@ -20,6 +20,8 @@ int giBusUsing = 0;
 int dxl_initialize( int devIndex, int baudnum )
 {
 	float baudrate;	
+//    printf("dxl_Initialize baud: %d", baudnum);
+    
 	baudrate = 2000000.0f / (float)(baudnum + 1);
 	
 	if( dxl_hal_open(devIndex, baudrate) == 0 )
@@ -327,6 +329,7 @@ void dxl_write_byte( int id, int address, int value )
 
 int dxl_read_word( int id, int address )
 {
+//    printf("dxl_read_word %d %d ", id, address);
 	while(giBusUsing);
 
 	gbInstructionPacket[ID] = (unsigned char)id;

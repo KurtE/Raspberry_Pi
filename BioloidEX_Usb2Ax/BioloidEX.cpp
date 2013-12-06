@@ -122,6 +122,7 @@ int BioloidControllerEx::interpolateSetup(int time){
     // And output the packet. 
     dxl_set_txpacket_length(2*posesize_+9);
 // Debug print out stuff
+#ifdef DEBUG_VERBOSE    
     uint8_t bPacketLen = gbInstructionPacket[3]+3;
     for (int i=0; i < bPacketLen; i++) {
         printf("%2x ", gbInstructionPacket[i]);
@@ -129,7 +130,7 @@ int BioloidControllerEx::interpolateSetup(int time){
             printf("\n\r");
     }
     printf("\n\r");
-    
+#endif    
     dxl_txrx_packet();
     return dxl_get_result();   // don't care for now
 }

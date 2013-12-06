@@ -578,7 +578,7 @@ boolean ServoDriver::ProcessTerminalCommand(byte *psz, byte bLen)
     // Test to see if all servos are responding...
     for(int i=1;i<=NUMSERVOS;i++){
       word w;
-      w = ax12GetRegister(i,AX_PRESENT_POSITION_L,2);
+      w = dxl_read_word(i,AX_PRESENT_POSITION_L);
       DBGSerial.print(i,DEC);
       DBGSerial.print(F("="));
       DBGSerial.println(w, DEC);
