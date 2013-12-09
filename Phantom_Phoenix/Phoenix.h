@@ -253,6 +253,7 @@ INCONTROLSTATE;
 class ServoDriver {
     public:
         void Init(void);
+        void Cleanup(void); // Add a cleanup function;
 
         word GetBatteryVoltage(void);
 

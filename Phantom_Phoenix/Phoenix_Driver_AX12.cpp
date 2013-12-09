@@ -129,6 +129,7 @@ EEPROMPoseSeq;      // This is a sequence entry
 
 // Some forward references
 extern void MakeSureServosAreOn(void);
+extern void SetRegOnAllServos(uint8_t bReg, uint8_t bVal);
 extern void DoPyPose(byte *psz);
 
 //--------------------------------------------------------------------
@@ -140,10 +141,8 @@ void ServoDriver::Init(void) {
   bioloid.poseSize(NUMSERVOS);  // Method in this version
   
   bioloid.readPose();
-#ifdef cVoltagePin  
-  for (byte i=0; i < 8; i++)
-    GetBatteryVoltage();  // init the voltage pin
-#endif
+
+  ax12SetRegister(AX_ID_DEVICE, USB2AX_REG_VOLTAGE, cPinTable[FIRSTFEMURPIN]);
 
   g_fAXSpeedControl = false;
 
@@ -160,6 +159,14 @@ void ServoDriver::Init(void) {
 #endif
 }
 
+//--------------------------------------------------------------------
+// Cleanup
+//--------------------------------------------------------------------
+void ServoDriver::Cleanup(void) {
+    // Do any cleanup that the driver may need.
+    printf("ServoDriver::Cleanup\n\r");
+    ax12SetRegister(AX_ID_DEVICE, USB2AX_REG_VOLTAGE, 0);   // Turn off the voltage testing...
+}
 
 //--------------------------------------------------------------------
 //GetBatteryVoltage - Maybe should try to minimize when this is called
@@ -167,23 +174,6 @@ void ServoDriver::Init(void) {
 // or if maybe some minimum time has elapsed...
 //--------------------------------------------------------------------
 
-#ifdef cVoltagePin  
-word  g_awVoltages[8]={
-  0,0,0,0,0,0,0,0};
-word  g_wVoltageSum = 0;
-byte  g_iVoltages = 0;
-
-word ServoDriver::GetBatteryVoltage(void) {
-  g_iVoltages = (++g_iVoltages)&0x7;  // setup index to our array...
-  g_wVoltageSum -= g_awVoltages[g_iVoltages];
-  g_awVoltages[g_iVoltages] = analogRead(cVoltagePin);
-  g_wVoltageSum += g_awVoltages[g_iVoltages];
-
-  return ((long)((long)g_wVoltageSum*125*(CVADR1+CVADR2))/(long)(2048*(long)CVADR2));  
-
-}
-
-#else
 #define VOLTAGE_MIN_TIME_BETWEEN_CALLS 250      // Max 4 times per second
 #define VOLTAGE_MAX_TIME_BETWEEN_CALLS 1000    // call at least once per second...
 #define VOLTAGE_TIME_TO_ERROR          3000    // Error out if no valid item is returned in 3 seconds...
@@ -192,33 +182,19 @@ byte g_bLegVoltage = 0;		// what leg did we last check?
 unsigned long g_ulTimeLastBatteryVoltage;
 
 word ServoDriver::GetBatteryVoltage(void) {
-  // In this case, we have to ask a servo for it's current voltage level, which is a lot more overhead than simply doing
-  // one AtoD operation.  So we will limit when we actually do this to maybe a few times per second.  
-  // Or longer if we are in the process of interpolating...
-  unsigned long ulDeltaTime = millis() - g_ulTimeLastBatteryVoltage;
-  if (g_wLastVoltage != 0xffff) {
-      if ( (ulDeltaTime < VOLTAGE_MIN_TIME_BETWEEN_CALLS) 
-            || (bioloid.interpolating() &&  (ulDeltaTime < VOLTAGE_MAX_TIME_BETWEEN_CALLS)))
-        return g_wLastVoltage;
-  }
+  // The USB2AX is caching informatation for us, so simply ask it for the data.  If this is still
+  // too much overhead, then we may want to only do this on timer...
 
   // Lets cycle through the Tibia servos asking for voltages as they may be the ones doing the most work...
-  register word wVoltage = dxl_read_byte(pgm_read_byte(&cPinTable[FIRSTTIBIAPIN+g_bLegVoltage]), AX_PRESENT_VOLTAGE);
-  if (++g_bLegVoltage >= CNT_LEGS)
-    g_bLegVoltage = 0;
-  if (wVoltage != 0xffff) {
-      g_ulTimeLastBatteryVoltage = millis();
-      g_wLastVoltage = wVoltage * 10;
-      return g_wLastVoltage;
-  }
-
-  // Allow it to error our a few times, but if the time until we get a valid response exceeds some time limit then error out.
-  if (ulDeltaTime < VOLTAGE_TIME_TO_ERROR)
-    return g_wLastVoltage;
-  return 0;
-
+  
+  word wVoltage = (word)ax12GetRegister(AX_ID_DEVICE, USB2AX_REG_VOLTAGE, 1);
+  if (wVoltage != g_ulTimeLastBatteryVoltage) {
+    printf("Voltage: %d\n\r", wVoltage);
+    g_ulTimeLastBatteryVoltage = wVoltage;
+  }  
+  return ((wVoltage != (word)-1)? wVoltage*10 : (word)-1);
+    
 }
-#endif
 
 //--------------------------------------------------------------------
 //[GP PLAYER]
@@ -472,9 +448,12 @@ void ServoDriver::FreeServos(void)
 {
   if (ServosEnabled) {
     g_InputController.AllowControllerInterrupts(false);    // If on xbee on hserial tell hserial to not processess...
+    SetRegOnAllServos(AX_TORQUE_ENABLE, 0);
+#if 0
     for (byte i = 0; i < NUMSERVOS; i++) {
       Relax(pgm_read_byte(&cPinTable[i]));
     }
+#endif    
     g_InputController.AllowControllerInterrupts(true);    
     g_fServosFree = true;
   }
@@ -499,6 +478,27 @@ void ServoDriver::IdleTime(void)
 }
 
 //--------------------------------------------------------------------
+//[SetRegOnAllServos] Function that is called to set the state of one
+//  register in all of the servos, like Torque on...
+//--------------------------------------------------------------------
+void SetRegOnAllServos(uint8_t bReg, uint8_t bVal)
+{
+    dxl_set_txpacket_id(AX_ID_BROADCAST);
+    dxl_set_txpacket_instruction(AX_CMD_SYNC_WRITE);
+
+    dxl_set_txpacket_parameter(0, bReg);    // which register
+    dxl_set_txpacket_parameter(1, 1);       // 1 byte
+    dxl_set_txpacket_length(2*NUMSERVOS+3);
+    
+    for (byte i = 0; i < NUMSERVOS; i++) {
+        dxl_set_txpacket_parameter(2+i*2, pgm_read_byte(&cPinTable[i]));       // 1 byte
+        dxl_set_txpacket_parameter(3+i*2, bVal);       // 1 byte
+    }
+    dxl_txrx_packet();
+    //return dxl_get_result();   // don't care for now
+}
+
+//--------------------------------------------------------------------
 //[MakeSureServosAreOn] Function that is called to handle when you are
 //  transistioning from servos all off to being on.  May need to read
 //  in the current pose...
@@ -512,32 +512,17 @@ void MakeSureServosAreOn(void)
     g_InputController.AllowControllerInterrupts(false);    // If on xbee on hserial tell hserial to not processess...
     bioloid.readPose();
 
+    SetRegOnAllServos(AX_TORQUE_ENABLE, 1);
+#if 0
     for (byte i = 0; i < NUMSERVOS; i++) {
       TorqueOn(pgm_read_byte(&cPinTable[i]));
     }
+#endif    
     g_InputController.AllowControllerInterrupts(true);    
     g_fServosFree = false;
   }   
 }
 
-//==============================================================================
-// BackgroundProcess - Allows us to have some background processing for those
-//    servo drivers that need us to do things like polling...
-//==============================================================================
-#if 0
-void  ServoDriver::BackgroundProcess(void) 
-{
-    // Hack if we are not interpolating, maybe try to get voltage.  This will acutally only do this
-    // a few times per second.
-#ifdef cTurnOffVol          // only do if we a turn off voltage is defined
-#ifndef cVoltagePin         // and we are not doing AtoD type of conversion...
-    if (!bioloid.interpolating )
-        GetBatteryVoltage();
-#endif    
-#endif
-  }
-}
-#endif
 
 #ifdef OPT_TERMINAL_MONITOR  
 //==============================================================================
@@ -578,7 +563,7 @@ boolean ServoDriver::ProcessTerminalCommand(byte *psz, byte bLen)
     // Test to see if all servos are responding...
     for(int i=1;i<=NUMSERVOS;i++){
       word w;
-      w = dxl_read_word(i,AX_PRESENT_POSITION_L);
+      w = ax12GetRegister(i,AX_PRESENT_POSITION_L, 2);
       DBGSerial.print(i,DEC);
       DBGSerial.print(F("="));
       DBGSerial.println(w, DEC);

@@ -120,11 +120,6 @@ word          g_wServoGoalSpeed;
 extern void setup(void);
 extern void loop(void);
 
-// Maybe should make these global helper functions...
-extern int ax12GetRegister(int id, int regstart, int length);
-extern void ax12SetRegister(int id, int regstart, int data);
-extern void ax12SetRegister2(int id, int regstart, int data);
-
 
 extern void AllServosOff(void);
 extern uint8_t GetCommandLine(void);
@@ -542,21 +537,6 @@ void PrintServoValues(void) {
 }
 //=======================================================================================
 
-
-
-int ax12GetRegister(int id, int regstart, int length) {
-    if (length == 1) 
-        return dxl_read_byte(id, regstart);
-    return dxl_read_word(id, regstart);    
-}
-
-void ax12SetRegister(int id, int regstart, int data) {
-    dxl_write_byte(id, regstart, data & 0xff);
-}
-
-extern void ax12SetRegister2(int id, int regstart, int data) {
-    dxl_write_word(id, regstart, data);
-}
 
 
 

@@ -63,14 +63,21 @@
 #define AX_GOAL_SPEED_H             33
 
 
-// Now for special ones for Pose downloads...
-#define AX_REG_POSE_FIRST_REG	   30
-#define AX_REG_POSE_INTERPOLATING  30
-#define AX_REG_POSE_SIZE		   31
-#define AX_REG_POSE_ID_FIRST	   32  // Try with 31 of these to start off with.
-#define AX_REG_POSE_LAST_REG	   (AX_REG_POSE_ID_FIRST+AX_SYNC_READ_MAX_DEVICES-1)
-#define AX_REG_SLOT_CUR_POSE_FIRST  64
-#define AX_REG_SLOT_CUR_POSE_LAST	(AX_REG_SLOT_CUR_POSE_FIRST+2*(AX_SYNC_READ_MAX_DEVICES-1)+1)
+// Now for special ones for USB2AX extensions
+#define USB2AX_REG_POSE_FIRST_REG	   24
+#define USB2AX_REG_USB_SEND_TIMEOUT    24
+#define USB2AX_REG_USB_RECEIVE_TIMEOUT 25 
+#define USB2AX_REG_USART_RECEIVE_TIMEOUT 26
+#define USB2AX_REG_VOLTAGE			   27	// Hack write-> which servo 0xff all - read -> gets cached voltage level
+#define USB2AX_REG_VOLTAGE_FRAME_TIME 28
+#define USB2AX_REG_POSE_FRAME_TIME	   29	// How long should each frame take in ms
+#define USB2AX_REG_POSE_INTERPOLATING  30
+#define USB2AX_REG_POSE_SIZE		   31
+#define USB2AX_REG_POSE_ID_FIRST	   32  // Try with 31 of these to start off with.
+#define USB2AX_REG_POSE_LAST_REG	   (USB2AX_REG_POSE_ID_FIRST+AX_SYNC_READ_MAX_DEVICES-1)
+
+#define USB2AX_REG_SLOT_CUR_POSE_FIRST  64
+#define USB2AX_REG_SLOT_CUR_POSE_LAST	(USB2AX_REG_SLOT_CUR_POSE_FIRST+2*(AX_SYNC_READ_MAX_DEVICES-1)+1)
 
 
 /* pose engine runs at 30Hz (33ms between frames) 
@@ -148,5 +155,12 @@ class BioloidControllerEx
 //    int transitions;                            // how many transitions we have left to load
    
 };
+
+// BUGBUG:: added some AX12 helper functions here. Could/Should create ax12.cpp/h...
+// Some helper functions to map to DXL functionality
+extern int ax12GetRegister(int id, int regstart, int length);
+extern void ax12SetRegister(int id, int regstart, int data);
+extern void ax12SetRegister2(int id, int regstart, int data);
+
 #endif
 

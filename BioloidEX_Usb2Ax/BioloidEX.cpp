@@ -56,21 +56,21 @@ BioloidControllerEx::BioloidControllerEx(long baud){
 }
 
 void BioloidControllerEx::setId(int index, int id){
-    dxl_write_byte(AX_ID_DEVICE, AX_REG_POSE_ID_FIRST+index, id);
+    dxl_write_byte(AX_ID_DEVICE, USB2AX_REG_POSE_ID_FIRST+index, id);
     dxl_get_result();   // don't care for now
 }
 
 int BioloidControllerEx::getId(int index){
-    return dxl_read_byte(AX_ID_DEVICE, AX_REG_POSE_ID_FIRST+index);
+    return ax12GetRegister(AX_ID_DEVICE, USB2AX_REG_POSE_ID_FIRST+index, 1);
 }
 
 int BioloidControllerEx::poseSize(void) {
-    return dxl_read_byte(AX_ID_DEVICE,  AX_REG_POSE_SIZE);
+    return ax12GetRegister(AX_ID_DEVICE,  USB2AX_REG_POSE_SIZE, 1);
 }                          // how many servos are in this pose, used by Sync()
 
 void BioloidControllerEx::poseSize(uint8_t posesize) {
     posesize_ = posesize;
-    dxl_write_byte(AX_ID_DEVICE,  AX_REG_POSE_SIZE, posesize);
+    dxl_write_byte(AX_ID_DEVICE,  USB2AX_REG_POSE_SIZE, posesize);
     dxl_get_result();   // don't care for now
 }
 
@@ -139,13 +139,13 @@ int BioloidControllerEx::interpolateSetup(int time){
 #define WAIT_SLOP_FACTOR 10  
 
 uint8_t BioloidControllerEx::interpolating(void) {
-  return dxl_read_byte(AX_ID_DEVICE, AX_REG_POSE_INTERPOLATING);
+  return ax12GetRegister(AX_ID_DEVICE, USB2AX_REG_POSE_INTERPOLATING, 1);
 }
 
 
 /* Added by Kurt */
 int BioloidControllerEx::getCurPoseByIndex(int index) {
-  return dxl_read_word(AX_ID_DEVICE, AX_REG_SLOT_CUR_POSE_FIRST+(index*2));
+  return ax12GetRegister(AX_ID_DEVICE, USB2AX_REG_SLOT_CUR_POSE_FIRST+(index*2), 2);
 }
 
 int BioloidControllerEx::getNextPoseByIndex(int index) {  // set a servo value by index for next pose
@@ -160,3 +160,22 @@ void BioloidControllerEx::setNextPoseByIndex(int index, int pos) {  // set a ser
     nextpose_[index] = (pos << BIOLOID_SHIFT);
   }
 }
+
+// Some helper functions to map to DXL functionality
+int ax12GetRegister(int id, int regstart, int length) {
+    int iRet;
+    if (length == 1) 
+        iRet = dxl_read_byte(id, regstart);
+    else    
+        iRet = dxl_read_word(id, regstart);    
+    return ((dxl_get_result() == COMM_RXSUCCESS)? iRet : -1);
+}
+
+void ax12SetRegister(int id, int regstart, int data) {
+    dxl_write_byte(id, regstart, data & 0xff);
+}
+
+void ax12SetRegister2(int id, int regstart, int data) {
+    dxl_write_word(id, regstart, data);
+}
+

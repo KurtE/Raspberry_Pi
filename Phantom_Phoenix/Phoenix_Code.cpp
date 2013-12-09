@@ -613,7 +613,8 @@ void SignalHandler(int sig){
         g_ServoDriver.FreeServos();
 
     // Additional cleanup?
-
+    g_ServoDriver.Cleanup();
+    
    exit(1); 
 
 }
@@ -2180,6 +2181,14 @@ void AdjustLegPositionsToBodyHeight()
 //--------------------------------------------------------------------
 // InitVoice
 //--------------------------------------------------------------------
+#if defined(ESPEAK_VOICENAME)
+static const char	g_szVoiceName[] = {ESPEAK_VOICENAME};
+#elif defined(ESPEAK_LANGUAGE)
+static const char	g_szVoiceLanguage[] = {ESPEAK_LANGUAGE};
+#ifndef ESPEAK_GENDER
+# define ESPEAK_GENDER 0
+#endif
+#endif
 void InitVoice()
 {
 #ifdef OPT_ESPEAK
