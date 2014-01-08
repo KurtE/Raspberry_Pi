@@ -49,7 +49,11 @@ CXX = $(TCHAIN_PREFIX)g++
 CXXFLAGS = $(COMPILE_OPTS) $(INCLUDE_DIRS)
 
 #~~~~~~~~~~~~~~~~~~~~ all ~~~~~~~~~~~~~~~~~~~~
-all: begin gccversion build end
+all: LIBRARY begin gccversion build end
+
+#~~~~~~~~~~~~~~~~~~~~ library ~~~~~~~~~~~~~~~~~~~~
+LIBRARY:
+	cd ../../library; $(MAKE)
 
 #~~~~~~~~~~~~~~~~~~~~ build ~~~~~~~~~~~~~~~~~~~~
 build: $(MAIN_OUT)
@@ -84,6 +88,7 @@ clean_list:
 	-rm -f $(MAIN_OBJS)
 	-rm -f $(MAIN_OUT)
 	-rm -f $(MAIN_DEPS)
+	-cd ../../library ; make clean
 
 #~~~~~~~~~~~~~~~~~~~~ backup ~~~~~~~~~~~~~~~~~~~~
 backup: clean
