@@ -171,6 +171,13 @@ up and working with my network. This time I simply had the GUI up (startX) and r
     cd /usr/src/kernel
     make scripts
  
+ Change Host Name
+ ----------------
+ If you wish to change the hostname of your system from the default, you can do this by editing the files:
+ /etc/hosts   (the new host name needs to map to 127.0.1.1)
+ /etc/hostname
+ Note You need to update both devices. 
+ 
 
 Setup tty Device on RPI
 -----------------------
@@ -183,9 +190,10 @@ Example: udevadm info --query=property --name=ttyUSB0
 
 From this I created a file named 99-usb-serial.rules in the /etc/udev/rules.d directory.  A copy of mine from the first
 Raspberry Pi is contained in the Phoenix directory.  It looks like:
+```
     SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", ATTRS{serial}=="A800fclo", SYMLINK+="ttyXBEE"
     SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", ATTRS{serial}=="A4014UWE", SYMLINK+="ttySSC-32"
-
+```
 Note: You will have to change the {Serial} value (and maybe some others if not FTDI) to the actual device on your machine.
 
 Aflter I installed this file, if I type something like:
@@ -202,6 +210,28 @@ I can also use the same type of setup on the BBBk, but in addition to this, the 
 Usarts available on expansion connectors P8/P9.  However to use these, you need to update the device
 tree.  I will put more information in here on how to do that, including files I use to update.
 More information up on: http://blog.pignology.net/2013/05/getting-uart2-devttyo1-working-on.html
+
+Note: It is now a lot easier than what it was earlier to do this.  From the current pignology... You see:
+just add you BB-UART2 to /media/BEAGLEBONE/uEnv.txt, with the key capemgr.enable_partno.
+```
+    This is my current uEnv.txt:
+        root@beaglebone:/lib/firmware# cat /media/BEAGLEBONE/uEnv.txt
+        optargs=quiet video=HDMI-A-1:1280x1024@60e capemgr.enable_partno=BB-SPI0DEV,BB-UART4,BB-CANBUS1
+    As you can see, I have the BB-UART4 enabled. This gives me /dev/ttyO4. (And I have SPIO and CAN enabled, but that is a different story).
+```
+Note: for debian install, the uEnv.txt file is in /boot/uboot directory.  I now have a line that looks like:
+optargs=capemgr.enable_partno=BB-UART1,BB-UART2
+
+Now trying to figure out how to set up the symbolic links to these devices.  Can get more information about these devices with command:
+sudo udevadm info --name=ttyO1 --query=all --attribute-walk
+
+Have two ways that work:
+SUBSYSTEM=="tty", ATTRS{port}=="0x0", ATTRS{line}=="1", SYMLINK+="ttyXBEE"
+SUBSYSTEM=="tty", ATTRS{port}=="0x0", ATTRS{line}=="2", SYMLINK+="ttyRCLAW"
+
+SUBSYSTEM=="tty", KERNEL=="ttyO1", SYMLINK+="ttyXBEE"
+SUBSYSTEM=="tty", KERNEL=="ttyO2", SYMLINK+="ttySSC-32"
+
 
 Download and Build this code.
 =============================
