@@ -455,10 +455,10 @@ void ControlInput(void)
         // Experimenting with trying to detect when IDLE.  maybe set a state of
         // of no button pressed and all joysticks are in the DEADBAND area...
         g_fControllerInUse = command.buttons 
-            || (abs(command.rightH) >= cTravelDeadZone)
-            || (abs(command.rightV) >= cTravelDeadZone)
             || (abs(command.leftH) >= cTravelDeadZone)
-            || (abs(command.leftV) >= cTravelDeadZone);
+            || (abs(command.leftV) >= cTravelDeadZone)
+            || (abs(command.rightH) >= cTravelDeadZone)
+            || (abs(command.rightV) >= cTravelDeadZone);
 
 #ifdef BBB_SERVO_SUPPORT
         // If we have a pan and tilt servos use LT to reset them to zero. 
@@ -508,10 +508,10 @@ void ControlInput(void)
         }
         
         // Ok lets grab the current Stick values.
-        LStickY = NormalizeJoystickValue(command.leftV);
-        LStickX = NormalizeJoystickValue(command.leftH);
-        RStickY = NormalizeJoystickValue(command.rightV);
-        RStickX = NormalizeJoystickValue(command.rightH);
+        LStickY = NormalizeJoystickValue(command.rightV);
+        LStickX = NormalizeJoystickValue(command.rightH);
+        RStickY = NormalizeJoystickValue(command.leftV);
+        RStickX = NormalizeJoystickValue(command.leftH);
        
         // Save away the buttons state as to not process the same press twice.
         g_bButtonsPrev = command.buttons;
