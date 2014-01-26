@@ -34,7 +34,7 @@ COMPILE_OPTS = -Wall -pedantic -g -O2 -fno-rtti -Wno-write-strings
 ifeq ($(OSTYPE),linux-gnueabi)
 LDFLAGS = $(LIBRARY_DIRS) -lpthread -lArduinoPort -lasound -lespeak -lrt
 else
-LDFLAGS = $(LIBRARY_DIRS) -lpthread -lespeak -lArduinoPort
+LDFLAGS = $(LIBRARY_DIRS) -lpthread -lArduinoPort -lasound -lespeak 
 endif
 
 #~~~~~~~~~~~~~~~~~~~~ Toolchain Prefix ~~~~~~~~~~~~~~~~~~~~
