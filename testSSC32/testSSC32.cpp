@@ -18,31 +18,15 @@
 #include <time.h>
 #include <inttypes.h>
 
-
+#include "ArduinoDefs.h"
 #include "WrapperSerial.h"
 
 // definition of some helper functions
-typedef unsigned char byte;
 
 extern int SSCRead (byte* pb, int cb, unsigned long ulTimeout, int EOL);
 
 char szSSC32Device[] = "/dev/ttySSC-32";
 WrapperSerial SSCSerial;
-
-
-#define delay(x)  usleep((x)*1000)
-
-unsigned long millis(void) {
-    struct timeval tv;
-    gettimeofday ( &tv, NULL );
-    return ( tv.tv_sec * 1000 + tv.tv_usec / 1000 );
-}
-
-unsigned long micros(void) {
-    struct timeval tv;
-    gettimeofday ( &tv, NULL );
-    return ( tv.tv_sec * 1000000 + tv.tv_usec);
-}
 
 int main(void)
 {
@@ -56,10 +40,11 @@ int main(void)
 	  	return (-1);
   	}
 	printf("Test Ver command\n");
-	SSCSerial.println("VER");
+	SSCSerial.println(" VER");
   	SSCSerial.flush();
-  	cbRead = SSCRead((byte*)abT, sizeof(abT), 250000, -1);
+  	cbRead = SSCRead((byte*)abT, sizeof(abT), 250000, 13);
   	if (cbRead) {
+            abT[cbRead-1] = 0;  // clear out CR
     		printf("Ver: %s\n", abT);
 	}
 
@@ -72,17 +57,46 @@ int main(void)
 	printf("Check GP Enable: %i\n", cbRead);
 
 	// See if it will digital inputs work at all...
-	SSCSerial.println("A");
-	abT[0] = '?';  // Some unlikely value
-	cbRead = SSCRead((byte*)abT, 1, 25000, -1);
-	printf("A cb: %i c: %c\n", cbRead, abT[0]);
-
+    for (char c = 'A'; c <= 'H'; c++) {
+        SSCSerial.println(c);
+        abT[0] = '?';  // Some unlikely value
+        cbRead = SSCRead((byte*)abT, 1, 25000, -1);
+        printf("%c cb: %i c: %c\n", c, cbRead, abT[0]);
+    }
 
 	// likewise check for Analog
-	SSCSerial.println("VB");
-	abT[0] = 1;  // Some unlikely value
-	cbRead = SSCRead((byte*)abT, 1, 25000, -1);
-	printf("VB cb: %i c: %x\n", cbRead, (int)abT[0]);
+    for (char c = 'A'; c <= 'H'; c++) {
+        SSCSerial.print("V");
+        SSCSerial.println(c);
+        abT[0] = 1;  // Some unlikely value
+        cbRead = SSCRead((byte*)abT, 1, 25000, -1);
+        printf("V%c cb: %i c: %x\n", c, cbRead, (int)abT[0]);
+    }
+    
+    // Try to read registers...
+    printf("\nRegisters\n");
+    for (int i = 0; i< 96; i++) {
+        SSCSerial.print("R");
+        SSCSerial.println(i, DEC);
+        cbRead = SSCRead((byte*)abT, sizeof(abT), 250000, 13);
+        if (cbRead > 0) {
+            abT[cbRead-1] = 0;  // Get rid of CR
+            printf(" %s", abT);
+        } else 
+            printf(" ???");
+        if ((i & 0xf) == 0xf)
+            printf("\n");
+    }        
+    
+    printf("\nCheck EEPROM\n");
+    // How about just the first 32 bytes which should be used for sequences
+    SSCSerial.println("EER 0;32");
+    cbRead = SSCRead((byte*)abT, 32, 250000, -1);
+    for (int i = 0; i< 32; i+=2) {
+        unsigned int w = (byte)abT[i] + ((unsigned int)(byte)abT[i] >> 8);
+        printf("%x ", w);
+    }
+    printf("\n");
 
 	printf("Exit\n");
 	

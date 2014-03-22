@@ -72,7 +72,7 @@
 
 #define USE_SSC32
 #define OPT_GPPLAYER
-//#define	cSSC_BINARYMODE	1			// Define if your SSC-32 card supports binary mode.
+#define	cSSC_BINARYMODE	1			// Define if your SSC-32 card supports binary mode.
 
 //==================================================================================================================================
 //==================================================================================================================================
