@@ -1,8 +1,8 @@
 Warning
-#######
+=======
 
 This is a Work In Progress!  There are no warrantees or Guarantees 
-of any type that this code is useable for anything.  But I hope it is…
+of any type that this code is useable for anything.  But I hope it isâ€¦
 
 This set of directories are some test programs as well as some code for some
 different robots, that I am trying out on the Raspberry Pi (RPI).  
@@ -44,27 +44,31 @@ http://www.raspberrypi.org/downloads
 
 After installing check for any updates that are not in the latest distro by running:
 
-sudo apt-get update && sudo apt-get upgrade
+    sudo apt-get update && sudo apt-get upgrade
 
 Next thing will install git... nearly everything needs it.  You can also push directly into your git hub online with it:
 
-sudo apt-get install git-core
+    sudo apt-get install git-core
 
 And finally you might as well make sure your firmware is updated so run the below commands.
 
 For proper time:
-sudo apt-get install ntpdate
-sudo ntpdate -u ntp.ubuntu.com
+
+    sudo apt-get install ntpdate
+    sudo ntpdate -u ntp.ubuntu.com
 
 For SSL certs:
-sudo apt-get install ca-certificates
+
+`sudo apt-get install ca-certificates`
 
 Firmware updater:
-sudo wget http://goo.gl/1BOfJ -O /usr/bin/rpi-update && sudo chmod +x /usr/bin/rpi-update
 
+`sudo wget http://goo.gl/1BOfJ -O /usr/bin/rpi-update && sudo chmod +x /usr/bin/rpi-update
+`
 And finally run the command for update:
-sudo rpi-update
 
+`sudo rpi-update
+`
 The above will pretty much get your RPI up to date with all the latest and greatest.
 
 Putty and WinSCP
@@ -86,7 +90,7 @@ As long as you are comfortable with a terminal this should work fine.
 Configure Raspberry Pi
 ----------------------
 
-Note: On the first boot, I also use the configuration program, to resize the main partition to
+Note: On the first boot, I also use the configuration program, to re-size the main partition to
 the size of the SD card, plus time zone, keyboard type... If I missed changing anything can always 
 bring this utility back up by typing: 
 sudo raspi-config
@@ -100,20 +104,27 @@ Setup for date and time update
 
     rm /etc/localtime
     ln -s /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
+    
+    Better yet:
+        dpkg-reconfigure tzdata
 
 Nameserver may not be set properly
     echo nameserver 8.8.8.8 > /etc/resolv.conf
     
 For the Root, I exported a few things in the ~/.profile
+
     export SLOTS=/sys/devices/bone_capemgr.8/slots
     export PINS=/sys/kernel/debug/pinctrl/44e10800.pinmux/pins
     export OSTYPE
     ln -s /dev/ttyO1 /dev/ttyXBEE
-    ln -s /dev/ttyO2 /dev/ttyRCLAW
+    ln -s /dev/ttyO2 /dev/ttyRCLAW`
+
 Note in the above the bone_capemgr.8 may change from build to build previously was .9
     
 Also as a way to force the date to be set properly, I added at the endo of ~/.bashrc 
+
     ntpdate-sync
+
 (I also enabled color coding of lines and the like)
 
 
@@ -121,34 +132,41 @@ Adding Users
 ------------
 
 To Add a different user other than pi, you can do something like: 
-sudo adduser kurt
+
+    sudo adduser kurt
 
 It will prompt you for some stuff...
 Then to make a super user: 
-sudo adduser kurt sudo
+
+    sudo adduser kurt sudo
 
 if you wish to make the new user act like the user pi, as with regards to sudo command, you can edit the information:
-sudo nano /etc/sudoerrs
+
+    sudo nano /etc/sudoerrs
 
 Also some devices require special permissions or the like to work properly.  Example USB serial devices
 need permission.  You can either get this by running the command using sudo, or you in this case you can add the
-user to the dialout group: sudo adduser kurt dialout
+user to the dialout group: 
+
+    sudo adduser kurt dialout
 
 To find out which group you may need for a device, do a ls -l for the device.  Example:
+
     kurt@raspberrypi ~ $ ls -l /dev/ttyUSB*
     crw-rw---T 1 root dialout 188, 0 Dec 31  1969 /dev/ttyUSB0
     crw-rw---T 1 root dialout 188, 1 Jun 25 08:30 /dev/ttyUSB1
 
 
 To list a complete list of users and groups you can try:
-cat /etc/passwd | cut -d: -f1
-cat /etc/group |cut -d: -f1 
+
+    cat /etc/passwd | cut -d: -f1
+    cat /etc/group |cut -d: -f1 
 
 If something works for one user such as pi but not for another user like kurt, you can also try using the
 groups command and see what the differences are and maybe add some to the user that is not working.
-groups
-groups pi
 
+    groups
+    groups pi
 
 Setup WiFI on RPI
 -----------------
@@ -168,14 +186,17 @@ up and working with my network. This time I simply had the GUI up (startX) and r
  Instructions are up at: 
      http://www.codealpha.net/864/how-to-set-up-a-rtl8192cu-on-the-beaglebone-black-bbb/
  Note: There is a step missing in the instructions that you need to build the scripts.
+
     cd /usr/src/kernel
     make scripts
  
  Change Host Name
  ----------------
  If you wish to change the hostname of your system from the default, you can do this by editing the files:
- /etc/hosts   (the new host name needs to map to 127.0.1.1)
- /etc/hostname
+
+    /etc/hosts   (the new host name needs to map to 127.0.1.1)
+    /etc/hostname
+
  Note You need to update both devices. 
  
 
@@ -197,10 +218,12 @@ Raspberry Pi is contained in the Phoenix directory.  It looks like:
 Note: You will have to change the {Serial} value (and maybe some others if not FTDI) to the actual device on your machine.
 
 Aflter I installed this file, if I type something like:
-ls -l /dev/ttyXBEE
+
+    ls -l /dev/ttyXBEE
 
 I see something like:
-lrwxrwxrwx 1 root root 7 Dec 31  1969 /dev/ttyXBEE -> ttyUSB0
+
+    lrwxrwxrwx 1 root root 7 Dec 31  1969 /dev/ttyXBEE -> ttyUSB0
 
 
 Setup TTy Device on BBBk
@@ -220,29 +243,33 @@ just add you BB-UART2 to /media/BEAGLEBONE/uEnv.txt, with the key capemgr.enable
     As you can see, I have the BB-UART4 enabled. This gives me /dev/ttyO4. (And I have SPIO and CAN enabled, but that is a different story).
 ```
 Note: for debian install, the uEnv.txt file is in /boot/uboot directory.  I now have a line that looks like:
-optargs=capemgr.enable_partno=BB-UART1,BB-UART2
+
+    optargs=capemgr.enable_partno=BB-UART1,BB-UART2
 
 Now trying to figure out how to set up the symbolic links to these devices.  Can get more information about these devices with command:
-sudo udevadm info --name=ttyO1 --query=all --attribute-walk
+
+    sudo udevadm info --name=ttyO1 --query=all --attribute-walk
 
 Have two ways that work:
-SUBSYSTEM=="tty", ATTRS{port}=="0x0", ATTRS{line}=="1", SYMLINK+="ttyXBEE"
-SUBSYSTEM=="tty", ATTRS{port}=="0x0", ATTRS{line}=="2", SYMLINK+="ttyRCLAW"
 
-SUBSYSTEM=="tty", KERNEL=="ttyO1", SYMLINK+="ttyXBEE"
-SUBSYSTEM=="tty", KERNEL=="ttyO2", SYMLINK+="ttySSC-32"
+    SUBSYSTEM=="tty", ATTRS{port}=="0x0", ATTRS{line}=="1", SYMLINK+="ttyXBEE"
+    SUBSYSTEM=="tty", ATTRS{port}=="0x0", ATTRS{line}=="2", SYMLINK+="ttyRCLAW"
+
+    SUBSYSTEM=="tty", KERNEL=="ttyO1", SYMLINK+="ttyXBEE"
+    SUBSYSTEM=="tty", KERNEL=="ttyO2", SYMLINK+="ttySSC-32"
 
 
 Download and Build this code.
 =============================
 
 Then you can copy or git the sources that I have up on github. The commands I did to do this is:
-cd ~
-mkdir git
-cd git
- git clone git://github.com/KurtE/Raspberry_Pi 
-cd Raspberry_Pi/Phoenix 
-make
+
+    cd ~
+    mkdir git
+    cd git
+     git clone git://github.com/KurtE/Raspberry_Pi 
+    cd Raspberry_Pi/Phoenix 
+    make
 
 PCM Sound and ESpeak
 ====================
@@ -260,14 +287,17 @@ Setup for Raspberry Pi
 
 First currently code is dependent on using espeak code. Will probably make this optional later... 
 To install the necessary stuff you need to do something like:
-sudo apt-get install espeak
-sudo apt-get install libespeak-dev
+
+    sudo apt-get install espeak
+    sudo apt-get install libespeak-dev
 
 Also the Phoenix code base now has the capability of outputting tones to the speacker using PCM.  To build
 using this capability you will need the appropriate header files and the like:  
-sudo apt-get libasound2-dev
+
+    sudo apt-get libasound2-dev
 Note: this maybe should be:
-sudo apt-get install libasound2 
+
+    sudo apt-get install libasound2 
 
 
 Note: you should then try to configure espeak and see if you can get it to work. More information
@@ -282,23 +312,47 @@ have installed a cheap USB sound card:
 http://www.amazon.com/dp/B002R33VWW/ref=pe_175190_21431760_M3T1_ST1_dp_1
 
 I did not find any valid packages to install the ALSA, so I did it manually:
+
     wget ftp://ftp.alsa-project.org/pub/lib/a...1.0.25.tar.bz2 
     tar jxf alsa-lib-1.0.25.tar.bz2
     cd alsa-lib-1.0.25
     ./configure
     make install
 
+Recently someone else solved this by uninstalling and re-installing alsa-dev package:
+
+    opkg install alsa-dev
+
+
+Update: Not sure if I will need to do this again, but from the beagle bone forum, a better way would be to:
+
+    apt-get source libasound2
+    cd alsa-lib-1.0.25
+    // if you want debug symbols
+    export DEB_BUILD_OPTION=nostrip noopt debug
+    dpkg-buildpackage -rfakeroot -uc -us -j8 -aarmhf
+
+    // The dpkg-buildpackage uses the settings a patches in the debian folder and builds the library as intended
+    // This commands creates Debian packages in the parent folder.
+
+    cd ..
+    sudo dpkg -i libasound2* deb
+
+
 This did not set the USB device to be default sound device, I used the command: aplay -L
 to list the nodes.  From which I created the configuration file: /etc/asound.conf
+
     pcm.!default sysdefault:Device
     
 Next up, install ESpeak, which also relies on a library portaudio. I downloaded the most recent package for
 portaudio from www.portaudio.com.  I extracted it and then:
+
     ./configure
     make install
     
 I downloaded espeak-1.47.11-source.zip from sourceforge.net.  After I extracted the stuff from the zip file and
 copied down the sources, I then did:
+
     ./configure
     make clean
     make
@@ -309,6 +363,7 @@ Could maybe move it, but instead defined:
 
     LD_LIBRARY_PATH=/usr/local/lib
     export LD_LIBRARY_PATH
+
 in /etc/profile
 
 ...  
@@ -324,10 +379,13 @@ Raspberry Pi
 ### Overclock ###
 
 Many overclock their RPI up from the default 700mhz up to 1000mhz to do this:
-sudo nano /boot/config.txt
+
+    sudo nano /boot/config.txt
+
 add or uncomment lines:
-arm_freq=1000
-sdram_freq+500 
+
+    arm_freq=1000
+    sdram_freq+500 
 
 More details up at: http://www.jeremymorgan.com/tutorials/raspberry-pi/how-to-overclock-raspberry-pi/ and
 http://raspberrypi.stackexchange.com/questions/1219/how-do-i-determine-the-current-mhz
@@ -364,6 +422,25 @@ which must be coppied into: /lib/firmware.
 When I reloaded the EmmC with the latest firmware 0620 I used his prebuilt binaries and instructions in his Readme.md and
 they appeared to work.    
 
+BBB Debian Update builds. 
+---------------
+As the Debian builds are progressing, there have been new images that come out.  Sometimes don't want to have to start fresh
+and redo everything, as reflashing starts you at square one.  Sometimes they setup some script files that allow you to update
+to the newer builds.  Example from one of the posts:
+
+    cd /opt/scripts/fixes
+    git pull
+
+    sudo ./debian-2014-03-04-to-2014-03-19.sh
+    sudo ./debian-2014-03-19-to-2014-03-27.sh
+
+The only thing it doesn't do is update the bootloader from v2013.10 in
+2014-03-04 to v2014.04-rc in 2014-03-19+
+
+For that:
+
+    cd /opt/scripts/tools/
+    sudo ./update_bootloader.sh 
 
 Warning
 =======
