@@ -33,10 +33,14 @@ ifeq ($(OSTYPE),linux-gnueabi)
 #BBBk
 TCHAIN_PREFIX=arm-angstrom-linux-gnueabi-
 else
+ifeq ($(OSTYPE),Edison)
+#Edison hard coded OSTYPE
+TCHAIN_PREFIX=i586-poky-linux-
+else
 #RPI
 TCHAIN_PREFIX=arm-linux-gnueabihf-
 endif
-
+endif
 #TCHAIN_PREFIX=x86_64-linux-gnu-
 
 CXX = $(TCHAIN_PREFIX)g++

@@ -1,48 +1,21 @@
 #try to create a static library of code for me to use for different programs
 #~~~~~~~~~~~~~~~~~~~~ Output File Name ~~~~~~~~~~~~~~~~~~~~
-MAIN_OUT = libArduinoPort.a
+MAIN_OUT = libAdafruit_ILI9341C.a
 
 #~~~~~~~~~~~~~~~~~~~~ Source Files ~~~~~~~~~~~~~~~~~~~~
 COMMON_SOURCES = \
-		Wiring.cpp \
-		Print.cpp \
-		Stream.cpp \
-		WrapperSerial.cpp \
-		CommanderEx.cpp \
-		diyxbee.cpp \
-		PWM.cpp \
-		RoboClaw.cpp 
-# I believe I have these building now for BBBk
-#ifeq ($(OSTYPE),linux-gnueabihf)
-# more files currently on the Raspberry PI
-EXTRA_SOURCES =  \
-		msound.cpp \
-		speak.cpp \
-		SDRFunctions.cpp 
-#endif
+		Adafruit_GFX.cpp \
+        Adafruit_ILI9341.cpp \
+        Adafruit_STMPE610.cpp 
 
-ifeq ($(OSTYPE),Edison)
-SOURCES = $(COMMON_SOURCES) 
-else
 SOURCES = $(COMMON_SOURCES) $(EXTRA_SOURCES)
-endif
 
 MAIN_OBJS:= $(subst .cpp,.o,$(SOURCES))
 
 MAIN_DEPS:= $(subst .cpp,.d,$(SOURCES))
 
 #~~~~~~~~~~~~~~~~~~~~ Include Directories ~~~~~~~~~~~~~~~~~~~~
-ifeq ($(OSTYPE),linux-gnueabi)
-INCLUDE_DIRS = -I. -I/usr/include/sound -I/user/include/alsa
-
-else
-ifeq ($(OSTYPE),Edison)
-INCLUDE_DIRS = -I. 
-
-#else
-INCLUDE_DIRS = -I. -I/usr/include/espeak -I/user/include/alsa
-endif
-endif
+INCLUDE_DIRS = -I. -I../library
 
 #~~~~~~~~~~~~~~~~~~~~ Library Directories ~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~~~~~~~~~~~~~~ Compiler Options ~~~~~~~~~~~~~~~~~~~~
@@ -54,7 +27,6 @@ COMPILE_OPTS = -Wall -pedantic -g -O2 -fno-rtti -Wno-write-strings
 ifeq ($(OSTYPE),linux-gnueabi)
 #BBBk
 TCHAIN_PREFIX=arm-angstrom-linux-gnueabi-
-
 else
 ifeq ($(OSTYPE),Edison)
 #Edison hard coded OSTYPE
@@ -64,7 +36,6 @@ else
 TCHAIN_PREFIX=arm-linux-gnueabihf-
 endif
 endif
-
 #TCHAIN_PREFIX=x86_64-linux-gnu-
 
 CXX = $(TCHAIN_PREFIX)g++

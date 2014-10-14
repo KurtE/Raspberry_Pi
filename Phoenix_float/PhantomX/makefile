@@ -34,14 +34,22 @@ COMPILE_OPTS = -Wall -pedantic -g -O2 -fno-rtti -Wno-write-strings
 ifeq ($(OSTYPE),linux-gnueabi)
 LDFLAGS = $(LIBRARY_DIRS) -lpthread -lBioloidEX -lArduinoPort -lasound -lespeak -lrt
 else
+ifeq ($(OSTYPE),Edison)
+LDFLAGS = $(LIBRARY_DIRS) -lpthread -lBioloidEX -lArduinoPort -lrt
+else
 LDFLAGS = $(LIBRARY_DIRS) -lpthread -lBioloidEX -lArduinoPort -lespeak -lasound 
 endif
-
+endif
 #~~~~~~~~~~~~~~~~~~~~ Toolchain Prefix ~~~~~~~~~~~~~~~~~~~~
 ifeq ($(OSTYPE),linux-gnueabi)
 TCHAIN_PREFIX=arm-angstrom-linux-gnueabi-
 else
+ifeq ($(OSTYPE),Edison)
+#Edison hard coded OSTYPE
+TCHAIN_PREFIX=i586-poky-linux-
+else
 TCHAIN_PREFIX=arm-linux-gnueabihf-
+endif
 endif
 #TCHAIN_PREFIX=x86_64-linux-gnu-
 

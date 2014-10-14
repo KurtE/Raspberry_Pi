@@ -127,6 +127,28 @@ Also as a way to force the date to be set properly, I added at the endo of ~/.ba
 
 (I also enabled color coding of lines and the like)
 
+Configuring Intel Edison
+------------------------
+**Warning**: This is the start of my working notes as I Just started with Edison
+
+Follow the steps to configure Edison: https://communities.intel.com/docs/DOC-23147
+If new board update firmware to latest: https://communities.intel.com/docs/DOC-23192
+
+Notes also found on forum: http://forums.trossenrobotics.com/showthread.php?7145-Experiment-with-Intel-Edison
+
+wifi did not work after configure: Talked about in thread: https://communities.intel.com/thread/55527
+edit: /etc/systemd/system/basic.target.wants/network-gadget-init.service
+change: 192.168.2.15 to something like: 192.168.99.15
+
+If playing around with my Adafruit code base, may be issue with weird Adafruit_GFX files includes instead of mine.  If so delete the library:   Robot_Control out of the Intel IDE
+
+If playing around with my Adafruit stuff with makefiles useing MRAA, issue with mraa with duplicate symbols, problem with their header files included in multiple source files.  I edited the file: /usr/include/mraa/common.hpp and made all of the functions inline, which appears to have solved this.
+
+Warning: my testAdafruit_ILI9341 test program can cause the Edison to reboot!
+
+
+
+
 
 Adding Users
 ------------
