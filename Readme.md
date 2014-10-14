@@ -146,6 +146,14 @@ If playing around with my Adafruit stuff with makefiles useing MRAA, issue with 
 
 Warning: my testAdafruit_ILI9341 test program can cause the Edison to reboot!
 
+Note: did not find any OSTYPE defined to be able to update makefiles to check to for now I am forcing it by creating the file  ~/.profile
+
+    export OSTYPE=Edison
+Note: still working on how to do udev rules on this machine may need to add lines like below to the .profile file until I do.
+
+    ln -s /dev/ttyO1 /dev/ttyXBEE
+    ln -s /dev/ttyO2 /dev/ttyRCLAW`
+
 
 
 
