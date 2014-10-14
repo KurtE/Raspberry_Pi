@@ -150,24 +150,25 @@ class Adafruit_ILI9341 : public Adafruit_GFX {
   int8_t  _cs, _dc, _rst;
   
   // for MRAA on Intel Edison
-  mraa::Gpio *_gpioDC;
-  mraa::Gpio *_gpioCS;
+  // Use C versions since c++ is simply wrapper anyway
+  mraa_gpio_context _gpioDC;
+  mraa_gpio_context _gpioCS;
   
   // try the C++ version
-  mraa::Spi* SPI;
+  mraa_spi_context SPI;
 
   void DCHigh()  __attribute__((always_inline)) {
-      _gpioDC->write(1);
+      mraa_gpio_write(_gpioDC, 1);
 	}
   void DCLow()  __attribute__((always_inline)) {
-      _gpioDC->write(0);
+      mraa_gpio_write(_gpioDC, 0);
 	}
 
   void CSHigh()  __attribute__((always_inline)) {
-      _gpioCS->write(1);
+      mraa_gpio_write(_gpioCS, 1);
 	}
   void CSLow()  __attribute__((always_inline)) {
-      _gpioCS->write(0);
+      mraa_gpio_write(_gpioCS, 0);
 	}
 };
 

@@ -35,14 +35,14 @@ void inline Adafruit_ILI9341::spiwrite(uint8_t c) {
   //Serial.print("0x"); Serial.print(c, HEX); Serial.print(", ");
 
   // transaction sets mode
-  SPI->write((char)c);
+  mraa_spi_write(SPI, c);
 }
 
 void inline Adafruit_ILI9341::spiwrite16(uint16_t c) {
   uint8_t txData[2];
   txData[0] = (c>>8) & 0xff;
   txData[1] = c & 0xff; 
-  char *prxData = SPI->write((char*)txData, 2);
+  uint8_t *prxData = mraa_spi_write_buf(SPI, txData, 2);
   if (prxData)
     free(prxData);
 }
@@ -53,21 +53,22 @@ void inline Adafruit_ILI9341::spiwriteN(uint32_t count, uint16_t c) {
 	while(count--) spiwrite16(c);
   else {	
     uint8_t txData[2*X86_BUFFSIZE];
-    char *prxData;
+    uint8_t *prxData;
     for (uint8_t i = 0; i < X86_BUFFSIZE*2; i+=2) {
       txData[i] = (c>>8) & 0xff;
       txData[i+1] = c & 0xff;
     }   
     while (count >= X86_BUFFSIZE) {
-	  prxData = SPI->write((char*)txData, 2*X86_BUFFSIZE);
+	  prxData = mraa_spi_write_buf(SPI, txData, 2*X86_BUFFSIZE);
       if (prxData)
         free(prxData);
 	  count -= X86_BUFFSIZE;
     }
-    if (count)
-	  prxData = SPI->write((char*)txData, 2*count);
+    if (count) {
+	  prxData = mraa_spi_write_buf(SPI, txData, 2*count);
       if (prxData)
         free(prxData);
+    }
   }
 }
 
@@ -136,9 +137,9 @@ void Adafruit_ILI9341::writedata16_cont(uint16_t color) {
 // establish settings and protect from interference from other
 // libraries.  Otherwise, they simply do nothing.
 inline void Adafruit_ILI9341::spi_begin(void) {
-  SPI->frequency(8000000);
-  SPI->lsbmode(false);  
-  SPI->mode(MRAA_SPI_MODE0);
+  mraa_spi_frequency(SPI, 8000000);
+  mraa_spi_lsbmode(SPI, false);  
+  mraa_spi_mode(SPI, MRAA_SPI_MODE0);
 }
 
 inline void Adafruit_ILI9341::spi_end(void) {
@@ -180,35 +181,35 @@ void Adafruit_ILI9341::commandList(uint8_t *addr) {
 
 
 void Adafruit_ILI9341::begin(void) {
-  mraa::Gpio* gpioRST = NULL;
+  mraa_gpio_context gpioRST = NULL;
   if (_rst > 0) 
-    gpioRST = new mraa::Gpio(_rst);
+    gpioRST = mraa_gpio_init(_rst);
 
   if (gpioRST) {
-    gpioRST->dir(mraa::DIR_OUT);
-    gpioRST->write(0);
+    mraa_gpio_dir(gpioRST, MRAA_GPIO_OUT);
+    mraa_gpio_write(gpioRST, 0);
   }
 
-  _gpioDC = new mraa::Gpio(_dc);
-  _gpioDC->dir(mraa::DIR_OUT);
+  _gpioDC = mraa_gpio_init(_dc);
+  mraa_gpio_dir(_gpioDC, MRAA_GPIO_OUT);
   
-  _gpioCS = new mraa::Gpio(_cs);
-  _gpioCS->dir(mraa::DIR_OUT);
+  _gpioCS = mraa_gpio_init(_cs);
+  mraa_gpio_dir(_gpioCS, MRAA_GPIO_OUT);
 
-  SPI = new mraa::Spi(1);   // which buss?   will experment here...
-  SPI->frequency(8000000);
-  SPI->lsbmode(false);  
-  SPI->mode(MRAA_SPI_MODE0);
+  SPI = mraa_spi_init(1);   // which buss?   will experment here...
+  mraa_spi_frequency(SPI, 8000000);
+  mraa_spi_lsbmode(SPI, false);  
+  mraa_spi_mode(SPI, MRAA_SPI_MODE0);
 
   // toggle RST low to reset
   if (gpioRST) {
-    gpioRST->write(1);
+    mraa_gpio_write(gpioRST, 1);
     delay(5);
-    gpioRST->write(0);
+    mraa_gpio_write(gpioRST, 0);
     delay(20);
-    gpioRST->write(1);
+    mraa_gpio_write(gpioRST, 1);
     delay(150);
-    delete gpioRST;
+    mraa_gpio_close(gpioRST);
   }
 
   
@@ -328,15 +329,15 @@ void Adafruit_ILI9341::begin(void) {
 void Adafruit_ILI9341::end(void) {
     // hardware SPI
     if (SPI) {
-        delete SPI;
+        mraa_spi_stop(SPI);
         SPI = NULL;
     }
     if (_gpioCS) {
-        delete _gpioCS;
+        mraa_gpio_close(_gpioCS);
         _gpioCS = NULL;
     }
     if (_gpioDC) {
-        delete _gpioDC;
+        mraa_gpio_close(_gpioDC);
         _gpioDC = NULL;
     }
 }
@@ -517,26 +518,8 @@ void Adafruit_ILI9341::invertDisplay(boolean i) {
 // Some limited reading is in place.
 
 uint8_t inline Adafruit_ILI9341::spiread(void) {
-  uint8_t r = 0;
-
-#if defined (__AVR__)
-  uint8_t backupSPCR = SPCR;
-  SPCR = mySPCR;
-  SPDR = 0x00;
-  while(!(SPSR & _BV(SPIF)));
-  r = SPDR;
-  SPCR = backupSPCR;
-#elif defined(TEENSYDUINO)
-  r = SPI.transfer(0x00);
-#elif defined (__arm__)
-  SPI.setClockDivider(11); // 8-ish MHz (full! speed!)
-  SPI.setBitOrder(MSBFIRST);
-  SPI.setDataMode(SPI_MODE0);
-  r = SPI.transfer(0x00);
-#endif
-  //Serial.print("read: 0x"); Serial.print(r, HEX);
   
-  return r;
+  return mraa_spi_write(SPI, 0x00);
 }
 
 uint8_t Adafruit_ILI9341::readdata(void) {
