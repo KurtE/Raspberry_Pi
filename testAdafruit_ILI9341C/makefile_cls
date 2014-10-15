@@ -1,9 +1,9 @@
 #~~~~~~~~~~~~~~~~~~~~ Output File Name ~~~~~~~~~~~~~~~~~~~~
-MAIN_OUT = graphictest
+MAIN_OUT = cls
 
 #~~~~~~~~~~~~~~~~~~~~ Source Files ~~~~~~~~~~~~~~~~~~~~
 SOURCES = \
-		graphictest.cpp
+		cls.cpp
 
 MAIN_OBJS:= $(subst .cpp,.o,$(SOURCES))
 

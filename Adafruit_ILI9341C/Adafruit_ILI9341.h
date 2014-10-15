@@ -19,7 +19,7 @@
 #include "ArduinoDefs.h"
 #include "Print.h"
 #define __ARDUINO_X86__
-#include <mraa.hpp>
+#include <mraa.h>
 #include <Adafruit_GFX.h>
 
 

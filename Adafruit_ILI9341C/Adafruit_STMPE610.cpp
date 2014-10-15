@@ -46,19 +46,19 @@ boolean Adafruit_STMPE610::begin() {
     mraa_gpio_dir(_gpioCS, MRAA_GPIO_OUT);
     CSHigh();
 
-    SPI = new mraa::Spi(1);   // which buss?   will experment here...
-    SPI->frequency(1000000);
-    SPI->lsbmode(false);  
-    SPI->mode(MRAA_SPI_MODE0);
+    SPI = mraa_spi_init(1);   // which buss?   will experment here...
+    mraa_spi_frequency(SPI, 1000000);
+    mraa_spi_lsbmode(SPI, false);  
+    mraa_spi_mode(SPI, MRAA_SPI_MODE0);
 
     m_spiMode = MRAA_SPI_MODE0;
 
     // try mode0
     if (getVersion() != 0x811) {
         //Serial.println("try MODE1");
-        SPI->frequency(1000000);
-        SPI->lsbmode(false);  
-        SPI->mode(MRAA_SPI_MODE1);
+        mraa_spi_frequency(SPI, 1000000);
+        mraa_spi_lsbmode(SPI, false);  
+        mraa_spi_mode(SPI, MRAA_SPI_MODE1);
         m_spiMode = MRAA_SPI_MODE1;
 
         if (getVersion() != 0x811) {
@@ -93,7 +93,7 @@ boolean Adafruit_STMPE610::begin() {
 void Adafruit_STMPE610::end(void) {
     // hardware SPI
     if (SPI)
-        delete SPI;
+        mraa_spi_stop(SPI);
     if (_gpioCS)
         mraa_gpio_close(_gpioCS);
 
@@ -151,16 +151,15 @@ TS_Point Adafruit_STMPE610::getPoint(void) {
 }
 
 uint8_t Adafruit_STMPE610::spiIn() {
-    SPI->frequency(1000000);
-    SPI->mode(m_spiMode);
-    char d = SPI->write(0);
-    return (uint8_t)d;
+    mraa_spi_frequency(SPI, 1000000);
+    mraa_spi_mode(SPI, m_spiMode);
+    return mraa_spi_write(SPI, 0x00);
 }
 
 void Adafruit_STMPE610::spiOut(uint8_t x) {  
-    SPI->frequency(1000000);
-    SPI->mode(m_spiMode);
-    SPI->write((char)x);
+    mraa_spi_frequency(SPI, 1000000);
+    mraa_spi_mode(SPI, m_spiMode);
+    mraa_spi_write(SPI, x);
 }
 
 uint8_t Adafruit_STMPE610::readRegister8(uint8_t reg) {

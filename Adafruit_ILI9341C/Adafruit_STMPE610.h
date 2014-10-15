@@ -19,7 +19,6 @@
 #include "Print.h"
 #define __ARDUINO_X86__
 #include <mraa.h>
-#include <mraa.hpp>
 
 
 #define STMPE_ADDR 0x41
@@ -144,11 +143,13 @@ class Adafruit_STMPE610{
   void spiOut(uint8_t x);
 
   int8_t  _cs;
-    // for MRAA on Intel Edison
+  
+  // for MRAA on Intel Edison
+  // Use C versions since c++ is simply wrapper anyway
   mraa_gpio_context _gpioCS;
   
   // try the C++ version
-  mraa::Spi* SPI;
+  mraa_spi_context SPI;
 
   void CSHigh()  __attribute__((always_inline)) {
       mraa_gpio_write(_gpioCS, 1);
