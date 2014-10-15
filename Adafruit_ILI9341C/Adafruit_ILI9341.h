@@ -129,6 +129,7 @@ class Adafruit_ILI9341 : public Adafruit_GFX {
 
   void     spiwrite(uint8_t) __attribute__((always_inline)),
            spiwrite16(uint16_t) __attribute__((always_inline)),
+           spiwrite16X2(uint16_t, uint16_t) __attribute__((always_inline)),
            spiwriteN(uint32_t, uint16_t) __attribute__((always_inline)),
            writecommand(uint8_t c),
            writecommand_cont(uint8_t c),
@@ -136,6 +137,7 @@ class Adafruit_ILI9341 : public Adafruit_GFX {
            writedata_cont(uint8_t d),
            writedata16(uint16_t color),
            writedata16_cont(uint16_t color),
+           writedata16X2_cont(uint16_t w1, uint16_t w2),
            commandList(uint8_t *addr);
   uint8_t  spiread(void);
 
@@ -154,22 +156,38 @@ class Adafruit_ILI9341 : public Adafruit_GFX {
   mraa_gpio_context _gpioDC;
   mraa_gpio_context _gpioCS;
   
+  uint8_t _fDCHigh; // is the DC High
+  uint8_t _fCSHigh; // is the CS high... 
+  
   // try the C++ version
   mraa_spi_context SPI;
 
   void DCHigh()  __attribute__((always_inline)) {
-      mraa_gpio_write(_gpioDC, 1);
-	}
+        if (!_fDCHigh) {
+            mraa_gpio_write(_gpioDC, 1);
+            _fDCHigh = 1;
+        }
+    }
+  
   void DCLow()  __attribute__((always_inline)) {
-      mraa_gpio_write(_gpioDC, 0);
+        if (_fDCHigh) {
+            mraa_gpio_write(_gpioDC, 0);
+            _fDCHigh = 0;
+        }
 	}
 
   void CSHigh()  __attribute__((always_inline)) {
-      mraa_gpio_write(_gpioCS, 1);
+        if (!_fCSHigh) {
+            mraa_gpio_write(_gpioCS, 1);
+            _fCSHigh = 1;
+        }
 	}
   void CSLow()  __attribute__((always_inline)) {
-      mraa_gpio_write(_gpioCS, 0);
-	}
+        if (_fCSHigh) {
+            mraa_gpio_write(_gpioCS, 0);
+            _fCSHigh = 0;
+        }
+    }
 };
 
 

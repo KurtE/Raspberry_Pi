@@ -17,6 +17,7 @@
 #include <limits.h>
 
 //Hardware SPI version. 
+#define X86_BUFFSIZE 64
 
 // Constructor when using hardware SPI.  Faster, but must use SPI pins
 // specific to each board type (e.g. 11,13 for Uno, 51,52 for Mega, etc.)
@@ -47,14 +48,24 @@ void inline Adafruit_ILI9341::spiwrite16(uint16_t c) {
     free(prxData);
 }
 
-#define X86_BUFFSIZE 32
+void inline Adafruit_ILI9341::spiwrite16X2(uint16_t w1, uint16_t w2) {
+  uint8_t txData[4];
+  txData[0] = (w1>>8) & 0xff;
+  txData[1] = w1 & 0xff; 
+  txData[2] = (w2>>8) & 0xff;
+  txData[3] = w2 & 0xff; 
+  uint8_t *prxData = mraa_spi_write_buf(SPI, txData, 4);
+  if (prxData)
+    free(prxData);
+}
+
 void inline Adafruit_ILI9341::spiwriteN(uint32_t count, uint16_t c) {
   if (count < X86_BUFFSIZE)
 	while(count--) spiwrite16(c);
   else {	
     uint8_t txData[2*X86_BUFFSIZE];
     uint8_t *prxData;
-    for (uint8_t i = 0; i < X86_BUFFSIZE*2; i+=2) {
+    for (uint16_t i = 0; i < X86_BUFFSIZE*2; i+=2) {
       txData[i] = (c>>8) & 0xff;
       txData[i+1] = c & 0xff;
     }   
@@ -74,23 +85,16 @@ void inline Adafruit_ILI9341::spiwriteN(uint32_t count, uint16_t c) {
 
 void Adafruit_ILI9341::writecommand(uint8_t c) {
   DCLow();
-  //DCLow();
-
   CSLow();
-  //CSLow();
-
   spiwrite(c);
 
   CSHigh();
-  //CSHigh();
 }
 
 // Like above, but does not raise CS at end
 void Adafruit_ILI9341::writecommand_cont(uint8_t c) {
   DCLow();
-  //DCLow();
   CSLow();
-  //CSLow();
 
   spiwrite(c);
 }
@@ -98,21 +102,16 @@ void Adafruit_ILI9341::writecommand_cont(uint8_t c) {
 
 void Adafruit_ILI9341::writedata(uint8_t c) {
   DCHigh();
-  //DCHigh();
   CSLow();
-  //CSLow();
   
   spiwrite(c);
 
-  //CSHigh();
   CSHigh();
 } 
 
 void Adafruit_ILI9341::writedata_cont(uint8_t c) {
   DCHigh();
-  //DCHigh();
   CSLow();
-  //CSLow();
   
   spiwrite(c);
 } 
@@ -132,6 +131,11 @@ void Adafruit_ILI9341::writedata16_cont(uint16_t color) {
   spiwrite16(color);
 }
 
+void Adafruit_ILI9341::writedata16X2_cont(uint16_t w1, uint16_t w2) {
+  DCHigh();
+  CSLow();
+  spiwrite16X2(w1, w2);
+}
 
 // If the SPI library has transaction support, these functions
 // establish settings and protect from interference from other
@@ -192,9 +196,13 @@ void Adafruit_ILI9341::begin(void) {
 
   _gpioDC = mraa_gpio_init(_dc);
   mraa_gpio_dir(_gpioDC, MRAA_GPIO_OUT);
+  mraa_gpio_write(_gpioDC, 1);  
+  _fDCHigh = 1; // init to high
   
   _gpioCS = mraa_gpio_init(_cs);
   mraa_gpio_dir(_gpioCS, MRAA_GPIO_OUT);
+  mraa_gpio_write(_gpioCS, 1);  
+  _fCSHigh = 1; // init to high
 
   SPI = mraa_spi_init(1);   // which buss?   will experment here...
   mraa_spi_frequency(SPI, 8000000);
@@ -346,14 +354,10 @@ void Adafruit_ILI9341::end(void) {
 inline void Adafruit_ILI9341::setAddr(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
 {
   writecommand_cont(ILI9341_CASET); // Column addr set
-  writedata16_cont(x0);     // XSTART
-  writedata16_cont(x1);     // XEND
+  writedata16X2_cont(x0, x1);     // XSTA
 
   writecommand_cont(ILI9341_PASET); // Row addr set
-  writedata16_cont(y0);     // YSTART
-  writedata16_cont(y1);     // YEND
-
-  writecommand(ILI9341_RAMWR); // write to RAM
+  writedata16X2_cont(y0, y1);     // XSTA
 }
 
 
@@ -378,15 +382,12 @@ void Adafruit_ILI9341::drawPixel(int16_t x, int16_t y, uint16_t color) {
   spi_begin();
   setAddrWindow(x,y,x+1,y+1);
 
-  //DCHigh();
   DCHigh();
-  //CSLow();
   CSLow();
 
   spiwrite16(color);
 
   CSHigh();
-  //CSHigh();
   spi_end();
 }
 
@@ -404,9 +405,7 @@ void Adafruit_ILI9341::drawFastVLine(int16_t x, int16_t y, int16_t h,
   setAddrWindow(x, y, x, y+h-1);
 
   DCHigh();
-  //DCHigh();
   CSLow();
-  //CSLow();
 
   spiwriteN(h, color);
   CSHigh();
@@ -541,7 +540,6 @@ uint8_t Adafruit_ILI9341::readcommand8(uint8_t c, uint8_t index) {
    CSHigh();
 
    DCLow();
-//   digitalWrite(_sclk, LOW);
    CSLow();
    spiwrite(c);
  
@@ -555,30 +553,31 @@ uint8_t Adafruit_ILI9341::readcommand8(uint8_t c, uint8_t index) {
 // Read Pixel at x,y and get back 16-bit packed color
 uint16_t Adafruit_ILI9341::readPixel(int16_t x, int16_t y)
 {
-	uint8_t r,g,b;
+    uint16_t wColor = 0;
 
-   spi_begin();
+    spi_begin();
 
     setAddr(x, y, x, y);
     writecommand_cont(ILI9341_RAMRD); // read from RAM
-//	waitTransmitComplete();
     DCHigh();  // make sure we are in data mode
 
 	// Read Pixel Data
-	r = spiread();	    // Read a DUMMY byte of GRAM
-	r = spiread();		// Read a RED byte of GRAM
-	g = spiread();		// Read a GREEN byte of GRAM
-	b = spiread();		// Read a BLUE byte of GRAM
-   CSHigh();
- //  CSHigh();
-   spi_end();
-	return color565(r,g,b);
+    uint8_t txData[4] = {0,0,0,0};
+    uint8_t *prxData = mraa_spi_write_buf(SPI, txData, 4);
+    
+    if (prxData) {
+        wColor = color565(prxData[1], prxData[2], prxData[3]);
+   //     printf("%x %x %x %x\n", prxData[0], prxData[1], prxData[2], prxData[3]);
+        free(prxData);
+    }    
+    CSHigh();
+    spi_end();
+    return wColor;
 }
 
 // Now lets see if we can read in multiple pixels
 void Adafruit_ILI9341::readRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t *pcolors) 
 {
-	uint8_t r,g,b;
     uint16_t c = w * h;
     spi_begin();
 
@@ -586,14 +585,22 @@ void Adafruit_ILI9341::readRect(int16_t x, int16_t y, int16_t w, int16_t h, uint
     writecommand_cont(ILI9341_RAMRD); // read from RAM
     DCHigh();  // make sure we are in data mode
 
-//    spiwrite(c);
-   	r = spiread();	        // Read a DUMMY byte of GRAM
+    uint8_t txdata[X86_BUFFSIZE * 3];   // how many to read at a time
+    uint8_t *prxData;
+    memset(txdata, 0, X86_BUFFSIZE * 3);
+    
+   	txdata [0]= spiread();	        // Read a DUMMY byte of GRAM
 
-    while (c--) {
-        r = spiread();		// Read a RED byte of GRAM
-        g = spiread();		// Read a GREEN byte of GRAM
-        b = spiread();		// Read a BLUE byte of GRAM
-        *pcolors++ = color565(r,g,b);
+    while (c){
+        uint16_t cRead = min (c, X86_BUFFSIZE);
+        prxData = mraa_spi_write_buf(SPI, txdata, cRead * 3);
+        if (prxData) {
+            for (uint16_t i=0; i < cRead*3; i+=3) {
+                *pcolors++ = color565(prxData[i], prxData[i+1], prxData[i+2]);
+            }
+            free (prxData);
+        }
+        c -= cRead;
     }
    CSHigh();
    spi_end();
@@ -602,16 +609,32 @@ void Adafruit_ILI9341::readRect(int16_t x, int16_t y, int16_t w, int16_t h, uint
 // Now lets see if we can writemultiple pixels
 void Adafruit_ILI9341::writeRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t *pcolors) 
 {
+    uint8_t txdata[X86_BUFFSIZE * 2];   // how many to write at a time.
+    uint8_t *prxData;
+    uint16_t iOut = 0;
     spi_begin();
 	setAddr(x, y, x+w-1, y+h-1);
 	writecommand_cont(ILI9341_RAMWR);
     DCHigh();  // make sure we are in data mode
 	for(y=h; y>0; y--) {
 		for(x=w; x>0; x--) {
-            spiwrite(*pcolors >> 8);
-            spiwrite(*pcolors++ & 0xff);
+            txdata[iOut++] = *pcolors >> 8;
+            txdata[iOut++] = *pcolors++ & 0xff;
+            if (iOut == (X86_BUFFSIZE * 2)) {
+                prxData = mraa_spi_write_buf(SPI, txdata, X86_BUFFSIZE * 2);
+                if (prxData)
+                    free (prxData);
+                iOut = 0;    
+            }
 		}
 	}
+    
+    if (iOut) {
+        prxData = mraa_spi_write_buf(SPI, txdata, iOut);
+        if (prxData)
+            free (prxData);
+    }
+    
     CSHigh();
    spi_end();
 }
