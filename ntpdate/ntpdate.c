@@ -33,8 +33,8 @@ int main() {
 
 void ntpdate() {
 
-  char *hostname="163.117.202.33";
-//  char *hostname="tick.usno.navy.mil";
+//  char *hostname="163.117.202.33";
+  char *hostname="108.61.73.243";  // ping 0.us.pool.ntp.org
   int portno=123;     //NTP is port 123
   int maxlen=1024;        //check our buffers
   int i;          // misc var i
@@ -63,7 +63,7 @@ void ntpdate() {
   //argv[1] );
   //i   = inet_aton(hostname,&server_addr.sin_addr);
   server_addr.sin_port=htons(portno);
-  //printf("ipaddr (in hex): %x\n",server_addr.sin_addr);
+  printf("ipaddr (in hex): %x\n",server_addr.sin_addr);
 
   /*
  * build a message.  Our message is all zeros except for a one in the
@@ -118,11 +118,14 @@ for(i=0;i<12;i++)
   printf("Time: %s",ctime(&tmit));
   i=time(0);
   printf("%d-%d=%d\n",i,tmit,i-tmit);
-  printf("System time is %d seconds off\n",i-tmit);
+  printf("System time is %d seconds off\n",i-=tmit);
 
   // what happens if we call settimeof day?
-  struct timeval tv;
-  tv.tv_sec = tmit;
-  tv.tv_usec = 0;
-  settimeofday(&tv, 0); 
+  if (abs(i) > 5) {
+      struct timeval tv;
+      tv.tv_sec = tmit;
+      tv.tv_usec = 0;
+      settimeofday(&tv, 0); 
+      printf("Time updated\n");
+    }
 }

@@ -51,7 +51,7 @@
 
 // Define other optional compnents to be included or not...
 // Speach options
-#define OPT_ESPEAK
+//#define OPT_ESPEAK
 
 // Else we can try to find by attributes
 // If VoiceName is defined it is used can be found by using espeak --voices command
@@ -63,11 +63,8 @@
 #define ESPEAK_AGE		0		//0=dont care
 
 // Use PCM Sound to play notes
-#define OPT_PCMSOUND
+//#define OPT_PCMSOUND
 
-
-// Use PCM Sound to play notes
-#define OPT_PCMSOUND
 
 //===================================================================
 // Debug Options
