@@ -30,13 +30,15 @@ COMPILE_OPTS = -Wall -pedantic -g -O2 -fno-rtti -Wno-write-strings
 
 #~~~~~~~~~~~~~~~~~~~~ Toolchain Prefix ~~~~~~~~~~~~~~~~~~~~
 ifeq ($(OSTYPE),linux-gnueabi)
-#BBBk
 TCHAIN_PREFIX=arm-angstrom-linux-gnueabi-
 else
-#RPI
+ifeq ($(OSTYPE),Edison)
+#Edison hard coded OSTYPE
+TCHAIN_PREFIX=i586-poky-linux-
+else
 TCHAIN_PREFIX=arm-linux-gnueabihf-
 endif
-
+endif
 #TCHAIN_PREFIX=x86_64-linux-gnu-
 
 CXX = $(TCHAIN_PREFIX)g++

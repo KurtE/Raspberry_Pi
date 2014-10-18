@@ -1,3 +1,5 @@
+#define EDISON
+
 #define DEBUG
 //=============================================================================
 //Project Kurt's PhantomX Reactor Arm
@@ -77,7 +79,9 @@
 #include "ax12.h"
 #include "BioloidEX.h"
 #include "CommanderEx.h"
-
+#ifdef EDISON
+#include "mraa.h"
+#endif
 //=============================================================================
 //=============================================================================
 /* Servo IDs */
@@ -227,6 +231,16 @@ int main(int argc, char *argv[])
     sigIntHandler.sa_flags = 0;
 
     sigaction(SIGINT, &sigIntHandler, NULL);
+    
+#ifdef EDISON
+    mraa_uart_context uart;
+
+    mraa_init();
+    uart = mraa_uart_init(0);
+    if (uart == NULL) {
+        printf("MRAA UART failed to setup\n");
+    }
+#endif    
 
     char abT[40];        // give a nice large buffer.
     uint8_t cbRead;
@@ -264,6 +278,9 @@ void setup() {
 		printf("Commander Begin failed\n");
 		return;
 	}    
+    
+    // BUGBUG:: testing mraa init of pins
+    
 
   // Next initialize the Bioloid
   bioloid.poseSize = CNT_SERVOS;

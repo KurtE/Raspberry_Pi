@@ -18,7 +18,7 @@ LIBRARY_DIRS = -L/usr/lib/arm-angstrom-linux-gnueabi/4.7.3 -L../BioloidEX_Usb2Ax
 else
 ifeq ($(OSTYPE),Edison)
 LDFLAGS = $(LIBRARY_DIRS) -lpthread -lBioloidEX -lArduinoPort -lrt
-LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../BioloidEX_Usb2Ax -L../library
+LIBRARY_DIRS = -L/usr/local/libs -L/usr/lib/arm-linux-gnueabihf -L../BioloidEX_Usb2Ax -L../library
 else
 LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../BioloidEX_Usb2Ax -L../library
 endif
