@@ -49,7 +49,7 @@
 // Define Options
 //=============================================================================
 #define OPT_WRISTROT  
-#define ARBOTIX_TO  1000      // if no message for a second probably turned off...
+#define ARBOTIX_TO  2000      // if no message for a second probably turned off...
 #define DEADZONE    3        // deadzone around center of joystick values
 #define SOUND_PIN    1      // Tell system we have added speaker to IO pin 1
 #define MAX_SERVO_DELTA_PERSEC 512

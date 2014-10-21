@@ -51,160 +51,89 @@ Commander::Commander()
 
 
 #ifdef CMDR_USE_XBEE
+
+static ssize_t _read(int fd, void *buf, size_t count)
+{
+	extern ssize_t read(int fd, void *buf, size_t count);
+	return read(fd, buf, count);
+}
+
 void *Commander::XBeeThreadProc(void *pv)
 {
     Commander *pcmdr = (Commander*)pv;
-    fd_set readfs;                                // file descriptor set to wait on.
+    fd_set fdset;                                // file descriptor set to wait on.
     timeval tv;                                   // how long to wait.
+	
+    pthread_barrier_wait(&pcmdr->_barrier);
 
-    //    printf("Thread start(%s)\n", pcmdr->_pszDevice);
-
-    // Lets do our init of the xbee here.
-    // We will do all of the stuff to intialize the serial port plus we will spawn off our thread.
-    struct termios tc;
-
-    if ((pcmdr->fdXBee = open(pcmdr->_pszDevice, O_RDWR | O_NOCTTY | O_SYNC /* |  O_NONBLOCK */)) == -1) 
-    {
-        printf("Open Failed\n");
-        return 0;
-    }
-
-
-    if ((pcmdr->pfileXBee = fdopen(pcmdr->fdXBee, "r+")) == NULL)
-    {
-        return 0;
-    }
-
-
-    setvbuf(pcmdr->pfileXBee, NULL, _IONBF, BUFSIZ);
-    fflush(pcmdr->pfileXBee);
-
-    if (tcgetattr(pcmdr->fdXBee, &tc))
-    {
-        perror("tcgetattr()");
-        return 0;
-    }
-
-
-    /* input flags */
-    tc.c_iflag &= ~ IGNBRK;                           /* enable ignoring break */
-    tc.c_iflag &= ~(IGNPAR | PARMRK);                 /* disable parity checks */
-    tc.c_iflag &= ~ INPCK;                            /* disable parity checking */
-    tc.c_iflag &= ~ ISTRIP;                           /* disable stripping 8th bit */
-    tc.c_iflag &= ~(INLCR | ICRNL);                   /* disable translating NL <-> CR */
-    tc.c_iflag &= ~ IGNCR;                            /* disable ignoring CR */
-    tc.c_iflag &= ~(IXON | IXOFF);                    /* disable XON/XOFF flow control */
-    /* output flags */
-    tc.c_oflag &= ~ OPOST;                            /* disable output processing */
-    tc.c_oflag &= ~(ONLCR | OCRNL);                   /* disable translating NL <-> CR */
-    /* not for FreeBSD */
-    tc.c_oflag &= ~ OFILL;                            /* disable fill characters */
-    /* control flags */
-    tc.c_cflag |=   CLOCAL;                           /* prevent changing ownership */
-    tc.c_cflag |=   CREAD;                            /* enable reciever */
-    tc.c_cflag &= ~ PARENB;                           /* disable parity */
-    tc.c_cflag &= ~ CSTOPB;                           /* disable 2 stop bits */
-    tc.c_cflag &= ~ CSIZE;                            /* remove size flag... */
-    tc.c_cflag |=   CS8;                              /* ...enable 8 bit characters */
-    tc.c_cflag |=   HUPCL;                            /* enable lower control lines on close - hang up */
-    #ifdef XBEE_NO_RTSCTS
-    tc.c_cflag &= ~ CRTSCTS;                          /* disable hardware CTS/RTS flow control */
-    #else
-    tc.c_cflag |=   CRTSCTS;                          /* enable hardware CTS/RTS flow control */
-    #endif
-    /* local flags */
-    tc.c_lflag &= ~ ISIG;                             /* disable generating signals */
-    tc.c_lflag &= ~ ICANON;                           /* disable canonical mode - line by line */
-    tc.c_lflag &= ~ ECHO;                             /* disable echoing characters */
-    tc.c_lflag &= ~ ECHONL;                           /* ??? */
-    tc.c_lflag &= ~ NOFLSH;                           /* disable flushing on SIGINT */
-    tc.c_lflag &= ~ IEXTEN;                           /* disable input processing */
-
-    /* control characters */
-    memset(tc.c_cc,0,sizeof(tc.c_cc));
-
-    /* set i/o baud rate */
-    if (cfsetspeed(&tc, pcmdr->_baud))
-    {
-        perror("cfsetspeed()");
-        return 0;
-    }
-
-
-    if (tcsetattr(pcmdr->fdXBee, TCSAFLUSH, &tc))
-    {
-        perror("tcsetattr()");
-        return 0;
-    }
-
-
-    /* enable input & output transmission */
-    if (tcflow(pcmdr->fdXBee, TCOON | TCION))
-    {
-        perror("tcflow()");
-        return 0;
-    }
-
-
-    fflush(pcmdr->pfileXBee);                             // again discard anything we have not read...
+        printf("Thread start(%s)\n", pcmdr->_pszDevice);
 
     //    printf("Thread Init\n");
 
     // May want to add end code... But for now don't have any defined...
-    int ch;
+    int ret;
+    unsigned char ch;
     while(!pcmdr->_fCancel)
     {
         // Lets try using select to block our thread until we have some input available...
-        FD_ZERO(&readfs);
-        FD_SET(pcmdr->fdXBee, &readfs);                   // Make sure we are set to wait for our descriptor
+        FD_ZERO(&fdset);
+        FD_SET(pcmdr->fdXBee, &fdset);                   // Make sure we are set to wait for our descriptor
         tv.tv_sec = 0;
         tv.tv_usec = 250000;                          // 1/4 of a second...
                                                       // wait until some input is available...
-        select(pcmdr->fdXBee + 1, &readfs, NULL, NULL, &tv);
+        select(pcmdr->fdXBee + 1, &fdset, NULL, NULL, &tv);
 
-        while((!pcmdr->_fCancel) && (ch = getc(pcmdr->pfileXBee)) != EOF)
-        {
-            if(pcmdr->index == -1)                    // looking for new packet
+        if(FD_ISSET(pcmdr->fdXBee, &fdset)) { 
+            //printf("!");
+            while((!pcmdr->_fCancel) && (ret = _read(pcmdr->fdXBee, &ch, 1)) > 0)
             {
-                if(ch == 0xff)
+                //  printf("%2x ", ch);
+                if(pcmdr->index == -1)                    // looking for new packet
                 {
-                    pcmdr->index = 0;
-                    pcmdr->checksum = 0;
+                    if(ch == 0xff)
+                    {
+                        pcmdr->index = 0;
+                        pcmdr->checksum = 0;
+                    }
                 }
-            }
-            else if(pcmdr->index == 0)
-            {
-                pcmdr->bInBuf[pcmdr->index] = (unsigned char) ch;
-                if(pcmdr->bInBuf[pcmdr->index] != 0xff)
+                else if(pcmdr->index == 0)
                 {
+                    pcmdr->bInBuf[pcmdr->index] = (unsigned char) ch;
+                    if(pcmdr->bInBuf[pcmdr->index] != 0xff)
+                    {
+                        //printf("!");
+                        pcmdr->checksum += ch;
+                        pcmdr->index++;
+                    }
+                }
+                else
+                {
+                    pcmdr->bInBuf[pcmdr->index] = (unsigned char) ch;
                     pcmdr->checksum += ch;
                     pcmdr->index++;
-                }
-            }
-            else
-            {
-                pcmdr->bInBuf[pcmdr->index] = (unsigned char) ch;
-                pcmdr->checksum += ch;
-                pcmdr->index++;
-                if(pcmdr->index == 7)                 // packet complete
-                {
-                    if(pcmdr->checksum%256 == 255)
+                    if(pcmdr->index == 7)                 // packet complete
                     {
-                        // Lets grab our mutex to keep things consistent
-                        pthread_mutex_lock(&pcmdr->lock);
-                        for (int i=0; i < 6; i++)
-                            pcmdr->vals[i] = pcmdr->bInBuf[i];
-                        pcmdr->fValidPacket = true;
-                        pthread_mutex_unlock(&pcmdr->lock);
+                        if(pcmdr->checksum%256 == 255)
+                        {
+                            //printf("\n");
+                            // Lets grab our mutex to keep things consistent
+                            pthread_mutex_lock(&pcmdr->lock);
+                            for (int i=0; i < 6; i++)
+                                pcmdr->vals[i] = pcmdr->bInBuf[i];
+                            pcmdr->fValidPacket = true;
+                            pthread_mutex_unlock(&pcmdr->lock);
+                        }
+                        //else
+                        //    printf(" ERR\n");
+                        pcmdr->index = -1;                // Say we are ready to start looking for start of next message...
                     }
-                    pcmdr->index = -1;                // Say we are ready to start looking for start of next message...
                 }
             }
         }
         // If we get to here try sleeping for a little time
-        usleep(1000);                                 // Note: we could maybe simply block the thread until input available!
+        //usleep(1000);                                 // Note: we could maybe simply block the thread until input available!
     }
-
+    close (pcmdr->fdXBee);
     printf("Commander - XBee thread exit\n");
     return 0;
 }
@@ -342,10 +271,54 @@ bool Commander::begin(char *pszDevice,  speed_t baud)
 #ifdef CMDR_USE_XBEE
     _pszDevice = pszDevice;
     _baud = baud;
+    
+    // Lets do our init of the xbee here.
+    // We will do all of the stuff to intialize the serial port plus we will spawn off our thread.
+    struct termios tc, tcNew;
+
+    if ((fdXBee = open(_pszDevice, O_RDWR | O_NONBLOCK)) == -1) 
+    {
+        printf("Open Failed\n");
+        return 0;
+    }
+
+
+    if (tcgetattr(fdXBee, &tc))
+    {
+        perror("tcgetattr()");
+        return 0;
+    }
+
+    // build new version
+   	bzero(&tcNew, sizeof(tcNew));
+
+	//newtios.c_cflag |= _dwBaudRate | CRTSCTS | CS8 | CLOCAL | CREAD;
+	tcNew.c_cflag = tc.c_cflag;
+	tcNew.c_cflag &= ~CBAUD;
+	tcNew.c_cflag |= _baud;
+	tcNew.c_iflag = IGNPAR;
+	tcNew.c_oflag = 0;
+
+	/* set input mode (non-canonical, no echo,...) */
+	tcNew.c_lflag = 0;
+
+	tcNew.c_cc[VTIME]    = 0;   /* inter-character timer unused */
+	tcNew.c_cc[VMIN]     = 1;   /* blocking read until 1 chars received */
+
+	tcflush(fdXBee, TCIFLUSH);
+	tcsetattr(fdXBee, TCSANOW, &tcNew);
+
+
     // Now we need to create our thread for doing the reading from the Xbee
+	pthread_barrier_init(&_barrier, 0, 2);
     err = pthread_create(&tidXBee, NULL, &XBeeThreadProc, this);
     if (err != 0)
         return false;
+
+  	// sync startup
+	pthread_barrier_wait(&_barrier);
+    
+
 #endif
 #ifdef CMDR_USE_SOCKET
     // Now we need to create our thread for doing the reading from the Xbee
@@ -362,6 +335,15 @@ bool Commander::begin(char *pszDevice,  speed_t baud)
 void Commander::end()
 {
     _fCancel = true;
+    
+#ifdef CMDR_USE_XBEE
+   	// pthread_join to sync
+	pthread_join(tidXBee, NULL);
+
+	// destroy barrier
+	pthread_barrier_destroy(&_barrier);
+#endif
+
 #ifdef CMDR_USE_SOCKET
     // See if the thread goes away.  If not, we can kill it.
     pthread_cancel(tidSocket);

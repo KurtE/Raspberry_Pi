@@ -50,7 +50,6 @@ int main()
     sigaction(SIGINT, &sigIntHandler, NULL);
 
     mraa_uart_context uart;
-    
     mraa_init();
     uart = mraa_uart_init(0);
     if (uart == NULL) {

@@ -85,8 +85,9 @@ class Commander
         bool _fCancel;                           // Cancel any input threads.
 #ifdef CMDR_USE_XBEE
         int fdXBee;                              // file descriptor
-        FILE *pfileXBee;                         // Pointer to file
         pthread_t tidXBee;                       // Thread Id of our reader thread...
+       	pthread_barrier_t _barrier;
+
         static void *XBeeThreadProc(void *);
 #endif
 #ifdef CMDR_USE_SOCKET
