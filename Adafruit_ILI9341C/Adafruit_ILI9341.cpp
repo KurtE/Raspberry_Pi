@@ -27,42 +27,9 @@
 #endif
 
 //Hardware SPI version. 
-#define X86_BUFFSIZE 64
+#define X86_BUFFSIZE 128
+#define SPI_FREQ 20000000
 
-
-
-#ifdef MRAA_SPI_TRANSFER_BUF
-// from internals of SPI
-struct _spi {
-    /*@{*/
-    int devfd; /**< File descriptor to SPI Device */
-    int mode; /**< Spi mode see spidev.h */
-    int clock; /**< clock to run transactions at */
-    mraa_boolean_t lsb; /**< least significant bit mode */
-    unsigned int bpw; /**< Bits per word */
-    /*@}*/
-};
-
-
-mraa_result_t mraa_spi_transfer_buf(mraa_spi_context dev, uint8_t* abOut, uint8_t* abIn, int length)
-{
-    struct spi_ioc_transfer msg;
-    memset(&msg, 0, sizeof(msg));
-
-    msg.tx_buf = (unsigned long) abOut;
-    msg.rx_buf = (unsigned long) abIn;
-    msg.speed_hz = dev->clock;
-    msg.bits_per_word = dev->bpw;
-    msg.delay_usecs = 0;
-    msg.len = length;
-    if (ioctl(dev->devfd, SPI_IOC_MESSAGE(1), &msg) < 0) {
-        //syslog(LOG_ERR, "Failed to perform dev transfer");
-        return MRAA_ERROR_INVALID_RESOURCE;
-    }
-    return MRAA_SUCCESS;
-}
-
-#endif
 
 // Constructor when using hardware SPI.  Faster, but must use SPI pins
 // specific to each board type (e.g. 11,13 for Uno, 51,52 for Mega, etc.)
@@ -115,39 +82,19 @@ void inline Adafruit_ILI9341::spiwrite16X2(uint16_t w1, uint16_t w2) {
 }
 
 void inline Adafruit_ILI9341::spiwriteN(uint32_t count, uint16_t c) {
-  if (count < X86_BUFFSIZE)
-	while(count--) spiwrite16(c);
-  else {	
     uint8_t txData[2*X86_BUFFSIZE];
-#ifdef MRAA_SPI_TRANSFER_BUF
-    //uint8_t rxData[2*X86_BUFFSIZE];
-#else
-    uint8_t *prxData;
-#endif
-    for (uint16_t i = 0; i < X86_BUFFSIZE*2; i+=2) {
+    uint16_t cbWrite = min(count, X86_BUFFSIZE) * 2;
+    count *=2 ; // shift it up one bit so don't have to multiply each time...
+    for (uint16_t i = 0; i < cbWrite; i+=2) {
       txData[i] = (c>>8) & 0xff;
       txData[i+1] = c & 0xff;
     }   
-    while (count >= X86_BUFFSIZE) {
-#ifdef MRAA_SPI_TRANSFER_BUF
-      mraa_spi_transfer_buf(SPI, txData, NULL/*rxData*/, 2*X86_BUFFSIZE);
-#else
-	  prxData = mraa_spi_write_buf(SPI, txData, 2*X86_BUFFSIZE);
-      if (prxData)
-        free(prxData);
-#endif        
-	  count -= X86_BUFFSIZE;
+    while (count) {
+      mraa_spi_transfer_buf(SPI, txData, NULL, cbWrite);
+	  count -= cbWrite;
+      if (count < cbWrite)
+        cbWrite = count;
     }
-    if (count) {
-#ifdef MRAA_SPI_TRANSFER_BUF
-      mraa_spi_transfer_buf(SPI, txData, NULL/*rxData*/, 2*count);
-#else
-	  prxData = mraa_spi_write_buf(SPI, txData, 2*count);
-      if (prxData)
-        free(prxData);
-#endif        
-    }
-  }
 }
 
 void Adafruit_ILI9341::writecommand(uint8_t c) {
@@ -208,7 +155,7 @@ void Adafruit_ILI9341::writedata16X2_cont(uint16_t w1, uint16_t w2) {
 // establish settings and protect from interference from other
 // libraries.  Otherwise, they simply do nothing.
 inline void Adafruit_ILI9341::spi_begin(void) {
-  mraa_spi_frequency(SPI, 8000000);
+  mraa_spi_frequency(SPI, SPI_FREQ);
   mraa_spi_lsbmode(SPI, false);  
   mraa_spi_mode(SPI, MRAA_SPI_MODE0);
 }
@@ -272,7 +219,7 @@ void Adafruit_ILI9341::begin(void) {
   _fCSHigh = 1; // init to high
 
   SPI = mraa_spi_init(1);   // which buss?   will experment here...
-  mraa_spi_frequency(SPI, 8000000);
+  mraa_spi_frequency(SPI, SPI_FREQ);
   mraa_spi_lsbmode(SPI, false);  
   mraa_spi_mode(SPI, MRAA_SPI_MODE0);
 
@@ -716,4 +663,60 @@ void Adafruit_ILI9341::writeRect(int16_t x, int16_t y, int16_t w, int16_t h, uin
     
     CSHigh();
    spi_end();
+}
+
+// Lets try doing our own drawchar...
+// Borrow inspiration from ili0341_t
+#define MFONT_SIZE  5 // how big a character can we handle here...
+#define DCA_SIZE 300    // how big of a buffer to allocate   
+
+void Adafruit_ILI9341::drawChar(int16_t x, int16_t y, unsigned char c,
+			    uint16_t fgcolor, uint16_t bgcolor, uint8_t size)
+{
+    uint16_t acolors[DCA_SIZE]; // do one logical scan line of the char per write
+    if ((fgcolor == bgcolor) || (size > MFONT_SIZE))
+        Adafruit_GFX::drawChar(x, y, c, fgcolor, bgcolor, size);
+    else {
+        if((x >= _width)            || // Clip right
+           (y >= _height)           || // Clip bottom
+           ((x + 6 * size - 1) < 0) || // Clip left  TODO: is this correct?
+           ((y + 8 * size - 1) < 0))   // Clip top   TODO: is this correct?
+            return;
+
+        uint8_t xr, yr;
+        uint8_t mask = 0x01;
+        uint16_t color;
+        int16_t yOut = y;
+        int16_t xOut = x;
+        uint8_t cRowsPerWrite = DCA_SIZE / (size*size*8);
+        uint8_t iRowPerWrite = 0;
+        uint16_t *pcolors = acolors;
+        for (y=0; y < 8; y++) {
+            for (yr=0; yr < size; yr++) {
+                for (x=0; x < 5; x++) {
+                    if (font[c * 5 + x] & mask) {
+                        color = fgcolor;
+                    } else {
+                        color = bgcolor;
+                    }
+                    for (xr=0; xr < size; xr++) {
+                        *pcolors++ = color;
+                    }
+                }
+                for (xr=0; xr < size; xr++) {
+                    *pcolors++ = bgcolor;
+                }
+            }
+            iRowPerWrite++;
+            if (iRowPerWrite == cRowsPerWrite) {
+                writeRect(xOut, yOut, 6*size, size*iRowPerWrite, acolors);
+                yOut += size*iRowPerWrite;
+                iRowPerWrite = 0;
+                pcolors = acolors;
+            }
+            mask = mask << 1;
+        }
+        if (iRowPerWrite)   // any other rows to still output
+            writeRect(xOut, yOut, 6*size, size*iRowPerWrite, acolors);
+    }
 }

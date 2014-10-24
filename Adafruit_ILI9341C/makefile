@@ -84,6 +84,6 @@ backup: clean
 include $(subst .cpp,.d,$(SOURCES))
 
 %.d: %.cpp
-	$(CC) -M $(CPPFLAGS) $< > $@.$$$$; \
+	$(CC) -M $(CXXFLAGS) $< > $@.$$$$; \
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;  \
 	rm -f $@.$$$$

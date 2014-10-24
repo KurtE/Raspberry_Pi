@@ -114,7 +114,9 @@ class Adafruit_ILI9341 : public Adafruit_GFX {
            fillRect(int16_t x, int16_t y, int16_t w, int16_t h,
              uint16_t color),
            setRotation(uint8_t r),
-           invertDisplay(boolean i);
+            drawChar(int16_t x, int16_t y, unsigned char c, uint16_t color,
+                uint16_t bg, uint8_t size),
+         invertDisplay(boolean i);
   uint16_t color565(uint8_t r, uint8_t g, uint8_t b);
 
    /* readdata is now used in readPixel/readRect, readcommand8 used in test programs */

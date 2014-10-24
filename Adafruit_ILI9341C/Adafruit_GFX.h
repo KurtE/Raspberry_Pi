@@ -23,6 +23,8 @@ class Adafruit_GFX : public Print {
     drawRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color),
     fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color),
     fillScreen(uint16_t color),
+    drawChar(int16_t x, int16_t y, unsigned char c, uint16_t color,
+      uint16_t bg, uint8_t size),
     invertDisplay(boolean i);
 
   // These exist only with Adafruit_GFX (no subclass overrides)
@@ -43,8 +45,6 @@ class Adafruit_GFX : public Print {
       int16_t radius, uint16_t color),
     drawBitmap(int16_t x, int16_t y, const uint8_t *bitmap,
       int16_t w, int16_t h, uint16_t color),
-    drawChar(int16_t x, int16_t y, unsigned char c, uint16_t color,
-      uint16_t bg, uint8_t size),
     setCursor(int16_t x, int16_t y),
     setTextColor(uint16_t c),
     setTextColor(uint16_t c, uint16_t bg),
@@ -73,6 +73,7 @@ class Adafruit_GFX : public Print {
     rotation;
   boolean
     wrap; // If set, 'wrap' text at right edge of display
+  static const unsigned char font[];  
 };
 
 #endif // _ADAFRUIT_GFX_H
