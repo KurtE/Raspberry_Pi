@@ -667,22 +667,65 @@ void Adafruit_ILI9341::writeRect(int16_t x, int16_t y, int16_t w, int16_t h, uin
 
 // Lets try doing our own drawchar...
 // Borrow inspiration from ili0341_t
-#define MFONT_SIZE  5 // how big a character can we handle here...
+#define MFONT_SIZE  6 // how big a character can we handle here...
 #define DCA_SIZE 300    // how big of a buffer to allocate   
 
 void Adafruit_ILI9341::drawChar(int16_t x, int16_t y, unsigned char c,
 			    uint16_t fgcolor, uint16_t bgcolor, uint8_t size)
 {
     uint16_t acolors[DCA_SIZE]; // do one logical scan line of the char per write
-    if ((fgcolor == bgcolor) || (size > MFONT_SIZE))
-        Adafruit_GFX::drawChar(x, y, c, fgcolor, bgcolor, size);
-    else {
-        if((x >= _width)            || // Clip right
-           (y >= _height)           || // Clip bottom
-           ((x + 6 * size - 1) < 0) || // Clip left  TODO: is this correct?
-           ((y + 8 * size - 1) < 0))   // Clip top   TODO: is this correct?
-            return;
 
+    if((x >= _width)            || // Clip right
+       (y >= _height)           || // Clip bottom
+       ((x + 6 * size - 1) < 0) || // Clip left  TODO: is this correct?
+       ((y + 8 * size - 1) < 0))   // Clip top   TODO: is this correct?
+        return;
+
+    if (fgcolor == bgcolor) {
+        uint8_t line;
+        for (int8_t i=0; i<5; i++ ) {
+            line = pgm_read_byte(font+(c*5)+i);
+            int8_t j=0;
+                
+            while (line) {
+                // will try to output multiple pixels at a time 
+                if (line == 0x7f) {
+                    fillRect(x+(i*size), y+(j*size), size, 7*size, fgcolor);
+                    j+=7;
+                    line >>= 7;
+                } else if ((line & 0x3f) == 0x3f) {
+                    fillRect(x+(i*size), y+(j*size), size, 6*size, fgcolor);
+                    j+=6;
+                    line >>= 6;
+                } else if ((line & 0x1f) == 0x1f) {
+                    fillRect(x+(i*size), y+(j*size), size, 5*size, fgcolor);
+                    j+=5;
+                    line >>= 5;
+                } else if ((line & 0xf) == 0xf) {
+                    fillRect(x+(i*size), y+(j*size), size, 4*size, fgcolor);
+                    j+=4;
+                    line >>= 4;
+                } else if ((line & 0x7) == 0x7) {
+                    fillRect(x+(i*size), y+(j*size), size, 3*size, fgcolor);
+                    j+=3;
+                    line >>= 3;
+                } else if ((line & 0x3) == 0x3) {
+                    fillRect(x+(i*size), y+(j*size), size, 2*size, fgcolor);
+                    j+=2;
+                    line >>= 2;
+                } else if (line & 0x1) {
+                    fillRect(x+(i*size), y+(j*size), size, size, fgcolor);
+                    j++;
+                    line >>= 1;
+                } else {
+                    line >>=1;
+                    j++;
+                }
+            }
+        }
+    } else {
+        if (size > MFONT_SIZE)
+            return; // too big to fit in our array
         uint8_t xr, yr;
         uint8_t mask = 0x01;
         uint16_t color;
@@ -720,3 +763,4 @@ void Adafruit_ILI9341::drawChar(int16_t x, int16_t y, unsigned char c,
             writeRect(xOut, yOut, 6*size, size*iRowPerWrite, acolors);
     }
 }
+
