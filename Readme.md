@@ -87,6 +87,17 @@ http://www.chiark.greenend.org.uk/~sgtatham/putty/download.html
 
 As long as you are comfortable with a terminal this should work fine.
 
+Archive files
+------
+ 
+As I always forget the right options to pass to tar for different types of archives.  Lots of places on web to find info like: http://www.thegeekstuff.com/2010/04/unix-tar-command-examples/
+    
+    tar xvf archive_name.tar
+    tar xvfz archive_name.tar.gz
+    tar xvfj archive_name.tar.bz2
+    gunzip archive_name.gz
+    bunzip2 archive_name.bz2
+
 Configure Raspberry Pi
 ----------------------
 
@@ -153,6 +164,43 @@ Note: still working on how to do udev rules on this machine may need to add line
 
     ln -s /dev/ttyO1 /dev/ttyXBEE
     ln -s /dev/ttyO2 /dev/ttyRCLAW`
+
+This works for the USB2AX in /etc/udev/rules.d/99-usb-serial.rules
+
+	SUBSYSTEM=="tty", ATTRS{idVendor}=="16d0", ATTRS{idProduct}=="06a7", ATTRS{serial}=="74031303437351D02210", SYMLINK+="ttyUSB2AX"
+
+Change Arduino IDE to allow wifi uploads of programs.  Currently I have created the file 
+c:\arduino-1.5.3-Intel.1.0.4\hardware\arduino\edison\tools\izmir\clupload_win_hacked.sh that contains:
+	#!/bin/sh
+	
+	echo "starting download script"
+	echo "Args to shell:" $*
+	
+	edison_ip="192.168.2.115"
+	edison_pw="*** YourPassword ***"
+	SKETCH=/sketch/sketch.elf
+	OLD_SKETCH=/sketch/sketch.elf.old
+	
+	
+	$1/plink -pw $edison_pw root@$edison_ip  "mv -f $SKETCH $OLD_SKETCH"
+	
+	# Execute the target download command
+	
+	#Download the file.
+	$1/pscp -scp -pw $edison_pw $2 root@$edison_ip:$SKETCH
+	$1/plink  -pw $edison_pw root@$edison_ip "chmod +x $SKETCH"
+	$1/plink  -pw $edison_pw root@$edison_ip "systemctl restart clloader"
+	
+You then change the file: 
+c:\arduino-1.5.3-Intel.1.0.4\hardware\arduino\edison\platform.win.txt
+and change the line: 
+
+    tools.izmirdl.cmd.path={runtime.ide.path}/hardware/arduino/edison/tools/izmir/clupload_win.sh
+
+to:
+
+	tools.izmirdl.cmd.path={runtime.ide.path}/hardware/arduino/edison/tools/izmir/clupload_win_hacked.sh
+
 
 
 
