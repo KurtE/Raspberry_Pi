@@ -28,7 +28,7 @@
 
 //Hardware SPI version. 
 #define X86_BUFFSIZE 128
-#define SPI_FREQ 20000000
+#define SPI_FREQ 8000000
 
 
 // Constructor when using hardware SPI.  Faster, but must use SPI pins
@@ -208,20 +208,24 @@ void Adafruit_ILI9341::begin(void) {
     mraa_gpio_write(gpioRST, 0);
   }
 
-  _gpioDC = mraa_gpio_init(_dc);
-  mraa_gpio_dir(_gpioDC, MRAA_GPIO_OUT);
-  mraa_gpio_write(_gpioDC, 1);  
-  _fDCHigh = 1; // init to high
-  
-  _gpioCS = mraa_gpio_init(_cs);
-  mraa_gpio_dir(_gpioCS, MRAA_GPIO_OUT);
-  mraa_gpio_write(_gpioCS, 1);  
-  _fCSHigh = 1; // init to high
 
   SPI = mraa_spi_init(1);   // which buss?   will experment here...
   mraa_spi_frequency(SPI, SPI_FREQ);
   mraa_spi_lsbmode(SPI, false);  
   mraa_spi_mode(SPI, MRAA_SPI_MODE0);
+
+  _gpioDC = mraa_gpio_init(_dc);
+  mraa_gpio_dir(_gpioDC, MRAA_GPIO_OUT);
+  mraa_gpio_use_mmaped(_gpioDC, 1);
+
+  mraa_gpio_write(_gpioDC, 1);  
+  _fDCHigh = 1; // init to high
+  
+  _gpioCS = mraa_gpio_init(_cs);
+  mraa_gpio_dir(_gpioCS, MRAA_GPIO_OUT);
+  mraa_gpio_use_mmaped(_gpioCS, 1);
+  mraa_gpio_write(_gpioCS, 1);  
+  _fCSHigh = 1; // init to high
 
   // toggle RST low to reset
   if (gpioRST) {

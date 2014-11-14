@@ -163,7 +163,23 @@ class Adafruit_ILI9341 : public Adafruit_GFX {
   
   // try the C++ version
   mraa_spi_context SPI;
+//#define MINIMIZE_CALLS  
+#ifndef MINIMIZE_CALLS
+  void DCHigh()  __attribute__((always_inline)) {
+            mraa_gpio_write(_gpioDC, 1);
+    }
+  
+  void DCLow()  __attribute__((always_inline)) {
+            mraa_gpio_write(_gpioDC, 0);
+	}
 
+  void CSHigh()  __attribute__((always_inline)) {
+            mraa_gpio_write(_gpioCS, 1);
+	}
+  void CSLow()  __attribute__((always_inline)) {
+            mraa_gpio_write(_gpioCS, 0);
+    }
+#else
   void DCHigh()  __attribute__((always_inline)) {
         if (!_fDCHigh) {
             mraa_gpio_write(_gpioDC, 1);
@@ -190,6 +206,7 @@ class Adafruit_ILI9341 : public Adafruit_GFX {
             _fCSHigh = 0;
         }
     }
+#endif    
 };
 
 
