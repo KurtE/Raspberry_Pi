@@ -92,9 +92,9 @@ Archive files
  
 As I always forget the right options to pass to tar for different types of archives.  Lots of places on web to find info like: http://www.thegeekstuff.com/2010/04/unix-tar-command-examples/
     
-    tar xvf archive_name.tar
-    tar xvfz archive_name.tar.gz
-    tar xvfj archive_name.tar.bz2
+    tar -xvf archive_name.tar
+    tar -zxvf  archive_name.tar.gz
+    tar -jxvf archive_name.tar.bz2
     gunzip archive_name.gz
     bunzip2 archive_name.bz2
 
@@ -150,6 +150,26 @@ Notes also found on forum: http://forums.trossenrobotics.com/showthread.php?7145
 wifi did not work after configure: Talked about in thread: https://communities.intel.com/thread/55527
 edit: /etc/systemd/system/basic.target.wants/network-gadget-init.service
 change: 192.168.2.15 to something like: 192.168.99.15
+
+Configure to use other repos to get stuff: 
+
+MRAA:
+
+    echo "src mraa-upm http://iotdk.intel.com/repos/1.1/intelgalactic" > /etc/opkg/mraa-upm.conf
+    opkg update
+    opkg install libmraa0
+
+Lots of good stuff: http://alextgalileo.altervista.org/edison-package-repo-configuration-instructions.html  
+
+set the contents of: /etc/opkg/base-feeds.conf 
+
+    src/gz all http://repo.opkg.net/edison/repo/all
+    src/gz edison http://repo.opkg.net/edison/repo/edison
+    src/gz core2-32 http://repo.opkg.net/edison/repo/core2-32
+
+The Boot segment gets full when you do updates as the whole space allocated for the boot is not actually
+used.  Instructions on how to fix up at: http://alextgalileo.altervista.org/blog/install-kernel-from-repo-onto-edison-official-image/
+
 
 If playing around with my Adafruit code base, may be issue with weird Adafruit_GFX files includes instead of mine.  If so delete the library:   Robot_Control out of the Intel IDE
 
@@ -372,7 +392,7 @@ To install the necessary stuff you need to do something like:
 Also the Phoenix code base now has the capability of outputting tones to the speacker using PCM.  To build
 using this capability you will need the appropriate header files and the like:  
 
-    sudo apt-get libasound2-dev
+    sudo apt-get install libasound2-dev
 Note: this maybe should be:
 
     sudo apt-get install libasound2 
@@ -401,6 +421,11 @@ Recently someone else solved this by uninstalling and re-installing alsa-dev pac
 
     opkg install alsa-dev
 
+Note: on some systems, the install of libasound did not create the library file:
+/usr/lib/libasound.so ,but instead created version 2 specific files.  That is in that directory, there were two files: libasound.so.2 which then points to libasound.so.2.0.0.  In these cases our links with just -lasound will fail.  two ways to fix:
+
+    1) Make our own link: ln -s /dev/lib/libasound.so.2.0.0 /dev/lib/libasound.so
+    2) change our link to: -l:libasound.so.2
 
 Update: Not sure if I will need to do this again, but from the beagle bone forum, a better way would be to:
 
@@ -422,6 +447,15 @@ to list the nodes.  From which I created the configuration file: /etc/asound.con
 
     pcm.!default sysdefault:Device
     
+If linking with -lasound  fails, I have seen on the net two answers.  
+
+The first is to create a link, such that your code will use which ever version of the library you have made your link to (in the case of multiple versions.)
+
+The other is to change the link to be more explicit and and do something like -l:libasound.so.2
+ 
+
+As for espeak.  I am just missing the file /usr/include/espeak/speak_lib.h
+
 Next up, install ESpeak, which also relies on a library portaudio. I downloaded the most recent package for
 portaudio from www.portaudio.com.  I extracted it and then:
 
