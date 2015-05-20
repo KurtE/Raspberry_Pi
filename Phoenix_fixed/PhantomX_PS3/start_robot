@@ -1,0 +1,7 @@
+#!/bin/sh -e
+sudo killall bluetoothd &
+sleep 2
+sudo ./Phantom_Phoenix &
+sleep 3
+sudo bluetoothd &
+

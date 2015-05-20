@@ -38,7 +38,8 @@
 #define PGM_P   const char *
 
 // Define some data types?
-#define byte unsigned char
+//#define byte unsigned char
+typedef unsigned char byte;
 //#define uint8_t unsigned char
 //#define uint16_t unsigned short
 //#define uint32_t unsigned long
