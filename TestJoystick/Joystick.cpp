@@ -1,14 +1,31 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <linux/joystick.h>
+#include <unistd.h>
+#include <time.h>
+#include <inttypes.h>
+#include <signal.h>
 
-#define JOY_DEV "/dev/js0"
+
+#define JOY_DEV "/dev/input/js0"
+
+uint8_t g_bContinue = 1;
+
+//====================================================================================================
+// SignalHandler - Try to free up things like servos if we abort.
+//====================================================================================================
+void SignalHandler(int sig){
+    printf("Caught signal %d\n", sig);
+    g_bContinue = 0;    // tell main loop to exit.
+}
 
 int main()
 {
-	int joy_fd, *axis= NULL, num_of_axis = 0, num_of_buttons=0,x;
+	int joy_fd, *axis= NULL, *min_values=NULL, *max_values=NULL, num_of_axis = 0, num_of_buttons=0,x;
 	
 	char *button = NULL , name_of_joystick[80];
 	
@@ -27,13 +44,29 @@ int main()
 	ioctl(joy_fd, JSIOCGNAME(80), &name_of_joystick);
 	{
 		axis = (int *) calloc(num_of_axis , sizeof(int));
+		min_values = (int *) calloc(num_of_axis , sizeof(int));
+		max_values = (int *) calloc(num_of_axis , sizeof(int));
 		button = (char *) calloc( num_of_buttons , sizeof (char));
 	}
 	printf( " Joy stick detected : %s \n \t %d axis \n\t %d buttons \n\n" ,name_of_joystick , num_of_axis , num_of_buttons);
+    
+    for (int i=0; i<num_of_axis; i++) 
+    {
+        min_values[i] = 0;
+        max_values[i] = 0;
+    }
+        
 
-	fcntl( joy_fd, F_SETFL , O_NONBLOCK ); // use non - blocking methods
+    // Setup signal handler
+    struct sigaction sigIntHandler;
+    sigIntHandler.sa_handler = SignalHandler;
+    sigemptyset(&sigIntHandler.sa_mask);
+    sigIntHandler.sa_flags = 0;
+    sigaction(SIGINT, &sigIntHandler, NULL);
 
-	while(1) // infinite loop
+//	fcntl( joy_fd, F_SETFL , O_NONBLOCK ); // use non - blocking methods
+	usleep(2000000);
+	while(g_bContinue) // infinite loop
 
 	{
 		// read the joystick 
@@ -47,15 +80,23 @@ int main()
 			case JS_EVENT_AXIS :
 			
 				axis [ js.number ] = js.value;
+                printf("%d : %d\n", js.number, js.value);
+                if (js.value < min_values[js.number])
+                    min_values[js.number] = js.value;
+                if (js.value > max_values[js.number])
+                    max_values[js.number] = js.value;
+                break;
 			
 			case JS_EVENT_BUTTON :
 			
 				button [js.number ] = js.value;
+                printf("BTN %d = %d\n", js.number, js.value);
+                break;
 		}
 
 		// print the results
 
-
+#if 0
 		printf( " X: %6d y: %6d ", axis[0] , axis[1]);
 		
 		if( num_of_axis > 2)
@@ -68,10 +109,20 @@ int main()
 		for( x=0 ; x<num_of_buttons ; ++x)
 		
 			printf( "B %d : %d " , x, button [x]);
+#endif
 		fflush(stdout);
 
 	}
-	
+
+    // print out min and max values
+    printf("\nAxis Min and Max Values\n");
+    for (int i=0; i<num_of_axis; i++) 
+    {
+        if (min_values[i] != 0 || max_values[i] != 0)
+            printf("%d: %d - %d\n", i, min_values[i], max_values[i]);
+    }
+        
+
 	close(joy_fd);
 	return 0;
 }
