@@ -11,7 +11,7 @@ COMMON_SOURCES = \
 		CommanderEx.cpp \
 		diyxbee.cpp \
 		PWM.cpp \
-        PS3Controller.cpp \
+        JoystickController.cpp \
 		RoboClaw.cpp 
 # I believe I have these building now for BBBk
 #ifeq ($(OSTYPE),linux-gnueabihf)

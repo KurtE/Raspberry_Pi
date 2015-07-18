@@ -68,92 +68,67 @@
 //====================================================================
 #include "Hex_Cfg.h"
 #include "Phoenix.h"
-#include "CommanderEx.h"
+#include "JoystickController.h"
 
 #ifdef OPT_ESPEAK
 #include "speak.h"
 #endif
 
+// Define which axes is used for the different Joysticks
+enum {
+    LSTICKX=0, LSTICKY, RSTICKX, RSTICKY=5 
+    };
+    
+ enum {BUT_SQUARE=0, BUT_X, BUT_CIRCLE, BUT_TRI, BUT_L1, BUT_R1, 
+    BUT_L2, BUT_R2, BUT_SHARE, BUT_OPT, BUT_L3, BUT_R3, BUT_PS, BUT_TRACK};
+ 
 //[CONSTANTS]
-#ifdef OPT_GPPLAYER
-enum
-{
-    WALKMODE=0, TRANSLATEMODE, ROTATEMODE, GPPLAYERMODE, MODECNT
-};
-#else
 enum
 {
     WALKMODE=0, TRANSLATEMODE, ROTATEMODE, MODECNT
 };
-#endif
 enum
 {
     NORM_NORM=0, NORM_LONG, HIGH_NORM, HIGH_LONG
 };
 
 #ifdef OPT_ESPEAK
+#define SpeakStr(psz) Speak.Speak((psz), true)
 extern "C"
 {
     // Move the Gait Names to program space...
-    const char s_sGN1[]  = "Ripple 12";
-    const char s_sGN2[]  = "Tripod 8";
-    const char s_sGN3[]  = "Tripple 12";
-    const char s_sGN4[]  = "Tripple 16";
-    const char s_sGN5[]  = "Wave 24";
-    const char s_sGN6[]  = "Tripod 6";
-    const char * s_asGateNames[]  =
+    const char s_sGN1[] PROGMEM = "Ripple 12";
+    const char s_sGN2[] PROGMEM = "Tripod 8";
+    const char s_sGN3[] PROGMEM = "Tripple 12";
+    const char s_sGN4[] PROGMEM = "Tripple 16";
+    const char s_sGN5[] PROGMEM = "Wave 24";
+    const char s_sGN6[] PROGMEM = "Tripod 6";
+    PGM_P s_asGateNames[] PROGMEM =
     {
         s_sGN1, s_sGN2, s_sGN3, s_sGN4, s_sGN5, s_sGN6
     };
 }
+
+
+#else
+#define SpeakStr(PSZ)
 #endif
 
 #define cTravelDeadZone 4                         //The deadzone for the analog input from the remote
 
-#define ARBOTIX_TO  1000                          // if we don't get a valid message in this number of mills turn off
+#define ARBOTIX_TO  300000                          // if we don't get a valid message in this number of mills turn off
 
 //=============================================================================
 // Global - Local to this file only...
 //=============================================================================
-Commander command = Commander();
+LinuxJoy ljoy = LinuxJoy();     // create our joystick object
+
 unsigned long g_ulLastMsgTime;
 short  g_sGPSMController;                         // What GPSM value have we calculated. 0xff - Not used yet
 
-#ifdef USEMULTI
-//==============================================================================
-//
-// Lets define our Sub-class of the InputControllerClass
-//
-//==============================================================================
-class CommanderInputController :
-public InputController
-{
-    public:
-        CommanderInputController();               // A reall simple constructor...
-
-        virtual void     Init(void);
-        virtual void     ControlInput(void);
-        virtual void     AllowControllerInterrupts(boolean fAllow);
-
-};
-
-CommanderInputController g_CommanderController;
-
-//==============================================================================
-// Constructor. See if there is a simple way to have one or more Input
-//     controllers. Maybe register at construction time
-//==============================================================================
-CommanderInputController::CommanderInputController()
-{
-    RegisterInputController(this);
-}
-
-
-#else
-#define CommanderInputController InputController
+#define JoystickInputController InputController
 // Define an instance of the Input Controller...
 InputController  g_InputController;               // Our Input controller
-#endif
 
 static short   g_BodyYOffset;
 static short   g_BodyYShift;
@@ -164,26 +139,22 @@ static bool    DoubleTravelOn;
 static bool    WalkMethod;
 byte           GPSeq;                             //Number of the sequence
 
-static byte    buttonsPrev;
-static byte    extPrev;
 
 // some external or forward function references.
-extern void CommanderTurnRobotOff(void);
-
+extern void ControllerTurnRobotOff(void);
+#define szDevice "/dev/input/js0"
 //==============================================================================
 // This is The function that is called by the Main program to initialize
 //the input controller, which in this case is the PS2 controller
 //process any commands.
 //==============================================================================
-char szDevice[] = "/dev/ttyXBEE";
-
 // If both PS2 and XBee are defined then we will become secondary to the xbee
-void CommanderInputController::Init(void)
+void JoystickInputController::Init(void)
 {
     //  DBGSerial.println("Init Commander Start");
     g_BodyYOffset = 0;
     g_BodyYShift = 0;
-    command.begin(szDevice, B38400);
+    ljoy.begin(szDevice);
     GPSeq = 0;                                    // init to something...
 
     ControlMode = WALKMODE;
@@ -193,7 +164,7 @@ void CommanderInputController::Init(void)
     WalkMethod = false;
     //  DBGSerial.println("Init Commander End");
 
-    SpeakStr("Start");
+    SpeakStr("Init");
 
 }
 
@@ -203,7 +174,7 @@ void CommanderInputController::Init(void)
 // do a lot of bit-bang outputs and it would like us to minimize any interrupts
 // that we do while it is active...
 //==============================================================================
-void CommanderInputController::AllowControllerInterrupts(boolean fAllow)
+void JoystickInputController::AllowControllerInterrupts(boolean fAllow)
 {
     // We don't need to do anything...
 }
@@ -213,25 +184,43 @@ void CommanderInputController::AllowControllerInterrupts(boolean fAllow)
 // This is The main code to input function to read inputs from the Commander and then
 //process any commands.
 //==============================================================================
-void CommanderInputController::ControlInput(void)
+void JoystickInputController::ControlInput(void)
 {
     // See if we have a new command available...
-    if(command.ReadMsgs() > 0)
+    if(ljoy.ReadMsgs() > 0)
     {
-        // If we receive a valid message than turn robot on...
-        g_InControlState.fRobotOn = true;
+
+        // We have a message see if we have turned the robot on or not...
+        if (ljoy.buttonPressed(BUT_SHARE)) 
+        {
+            if (!g_InControlState.fRobotOn)
+            {
+                // Turn it on
+                g_InControlState.fRobotOn = true;
+                printf("Turn Robot on\n");
+
+            }
+            else
+            {
+                ControllerTurnRobotOff();
+            }
+        }    
+
+        // If robot is not on, lets bail from here...
+        if ( !g_InControlState.fRobotOn)
+            return;
         
         // Experimenting with trying to detect when IDLE.  maybe set a state of
         // of no button pressed and all joysticks are in the DEADBAND area...
-        g_InControlState.fControllerInUse = command.buttons 
-            || (abs(command.leftH) >= cTravelDeadZone)
-            || (abs(command.leftV) >= cTravelDeadZone)
-            || (abs(command.rightH) >= cTravelDeadZone)
-            || (abs(command.rightV) >= cTravelDeadZone);
+        g_InControlState.fControllerInUse = /*ljoy.buttons*/ 0 
+            || (abs((ljoy.axis_values[LSTICKX]/256)) >= cTravelDeadZone)
+            || (abs((ljoy.axis_values[LSTICKY]/256)) >= cTravelDeadZone)
+            || (abs((ljoy.axis_values[RSTICKX]/256)) >= cTravelDeadZone)
+            || (abs((ljoy.axis_values[RSTICKY]/256)) >= cTravelDeadZone);
         // [SWITCH MODES]
 
         // Cycle through modes...
-        if ((command.buttons & BUT_LT) && !(buttonsPrev & BUT_LT))
+        if (ljoy.buttonPressed(BUT_OPT))
         {
             if (++ControlMode >= MODECNT)
             {
@@ -247,7 +236,7 @@ void CommanderInputController::ControlInput(void)
 
         //[Common functions]
         //Switch Balance mode on/off
-        if ((command.buttons & BUT_L4) && !(buttonsPrev & BUT_L4))
+        if (ljoy.buttonPressed(BUT_SQUARE))
         {
             g_InControlState.BalanceMode = !g_InControlState.BalanceMode;
             if (g_InControlState.BalanceMode)
@@ -261,7 +250,7 @@ void CommanderInputController::ControlInput(void)
         }
 
         //Stand up, sit down
-        if ((command.buttons & BUT_L5) && !(buttonsPrev & BUT_L5))
+        if (ljoy.buttonPressed(BUT_TRI))
         {
             if (g_BodyYOffset>0)
                 g_BodyYOffset = 0;
@@ -269,18 +258,18 @@ void CommanderInputController::ControlInput(void)
                 g_BodyYOffset = 35;
         }
 
-        // We will use L6 with the Right joystick to control both body offset as well as Speed...
+        // We will use L1 with the Right joystick to control both body offset as well as Speed...
         // We move each pass through this by a percentage of how far we are from center in each direction
         // We get feedback with height by seeing the robot move up and down.  For Speed, I put in sounds
         // which give an idea, but only for those whoes robot has a speaker
-        if (command.buttons & BUT_L6 )
+        if (ljoy.button(BUT_L1))
         {
             // raise or lower the robot on the joystick up /down
             // Maybe should have Min/Max
-            g_BodyYOffset += command.rightV/25;
+            g_BodyYOffset += (ljoy.axis_values[RSTICKY]/256)/25;
 
             // Likewise for Speed control
-            int dspeed = command.rightH / 16;      //
+            int dspeed = (ljoy.axis_values[RSTICKX]/256) / 16;      //
             if ((dspeed < 0) && g_InControlState.SpeedControl)
             {
                 if ((word)(-dspeed) <  g_InControlState.SpeedControl)
@@ -297,14 +286,14 @@ void CommanderInputController::ControlInput(void)
                 MSound( 1, 50, 1000+g_InControlState.SpeedControl);
             }
 
-            command.rightH = 0;                    // don't walk when adjusting the speed here...
+            ljoy.axis_values[RSTICKX] = 0;                    // don't walk when adjusting the speed here...
         }
 
         //[Walk functions]
         if (ControlMode == WALKMODE)
         {
             //Switch gates
-            if (((command.buttons & BUT_R1) && !(buttonsPrev & BUT_R1))
+            if ((ljoy.buttonPressed(BUT_R1))
                                                   //No movement
                 && abs(g_InControlState.TravelLength.x)<cTravelDeadZone
                 && abs(g_InControlState.TravelLength.z)<cTravelDeadZone
@@ -333,7 +322,7 @@ void CommanderInputController::ControlInput(void)
             }
 
             //Double leg lift height
-            if ((command.buttons & BUT_RT) && !(buttonsPrev & BUT_RT))
+            if (ljoy.buttonPressed(BUT_R2))
             {
                 MSound( 1, 50, 2000);
                                                   // wrap around mode
@@ -346,7 +335,7 @@ void CommanderInputController::ControlInput(void)
             }
 
             // Switch between Walk method 1 && Walk method 2
-            if ((command.buttons & BUT_R2) && !(buttonsPrev & BUT_R2))
+            if (ljoy.buttonPressed(BUT_R3))
             {
                 MSound (1, 50, 2000);
                 WalkMethod = !WalkMethod;
@@ -355,12 +344,12 @@ void CommanderInputController::ControlInput(void)
             //Walking
             if (WalkMethod)                       //(Walk Methode)
                                                   //Right Stick Up/Down
-                g_InControlState.TravelLength.z = (command.rightV);
+                g_InControlState.TravelLength.z = ((ljoy.axis_values[RSTICKY]/256));
 
             else
             {
-                g_InControlState.TravelLength.x = -command.leftH;
-                g_InControlState.TravelLength.z = command.leftV;
+                g_InControlState.TravelLength.x = -(ljoy.axis_values[LSTICKX]/256);
+                g_InControlState.TravelLength.z = (ljoy.axis_values[LSTICKY]/256);
             }
 
             if (!DoubleTravelOn)                  //(Double travel length)
@@ -370,97 +359,39 @@ void CommanderInputController::ControlInput(void)
             }
 
                                                   //Right Stick Left/Right
-            g_InControlState.TravelLength.y = -(command.rightH)/4;
+            g_InControlState.TravelLength.y = -((ljoy.axis_values[RSTICKX]/256))/4;
         }
 
         //[Translate functions]
         g_BodyYShift = 0;
         if (ControlMode == TRANSLATEMODE)
         {
-            g_InControlState.BodyPos.x =  SmoothControl(((command.leftH)*2/3), g_InControlState.BodyPos.x, SmDiv);
-            g_InControlState.BodyPos.z =  SmoothControl(((command.leftV)*2/3), g_InControlState.BodyPos.z, SmDiv);
-            g_InControlState.BodyRot1.y = SmoothControl(((command.rightH)*2), g_InControlState.BodyRot1.y, SmDiv);
+            g_InControlState.BodyPos.x =  SmoothControl((((ljoy.axis_values[LSTICKX]/256))*2/3), g_InControlState.BodyPos.x, SmDiv);
+            g_InControlState.BodyPos.z =  SmoothControl((((ljoy.axis_values[LSTICKY]/256))*2/3), g_InControlState.BodyPos.z, SmDiv);
+            g_InControlState.BodyRot1.y = SmoothControl((((ljoy.axis_values[RSTICKX]/256))*2), g_InControlState.BodyRot1.y, SmDiv);
 
-            //      g_InControlState.BodyPos.x = (command.leftH)/2;
-            //      g_InControlState.BodyPos.z = -(command.leftV)/3;
-            //      g_InControlState.BodyRot1.y = (command.rightH)*2;
-            g_BodyYShift = (-(command.rightV)/2);
+            //      g_InControlState.BodyPos.x = ((ljoy.axis_values[LSTICKX]/256))/2;
+            //      g_InControlState.BodyPos.z = -((ljoy.axis_values[LSTICKY]/256))/3;
+            //      g_InControlState.BodyRot1.y = ((ljoy.axis_values[RSTICKX]/256))*2;
+            g_BodyYShift = (-((ljoy.axis_values[RSTICKY]/256))/2);
         }
 
         //[Rotate functions]
         if (ControlMode == ROTATEMODE)
         {
-            g_InControlState.BodyRot1.x = (command.leftV);
-            g_InControlState.BodyRot1.y = (command.rightH)*2;
-            g_InControlState.BodyRot1.z = (command.leftH);
-            g_BodyYShift = (-(command.rightV)/2);
+            g_InControlState.BodyRot1.x = ((ljoy.axis_values[LSTICKY]/256));
+            g_InControlState.BodyRot1.y = ((ljoy.axis_values[RSTICKX]/256))*2;
+            g_InControlState.BodyRot1.z = ((ljoy.axis_values[LSTICKX]/256));
+            g_BodyYShift = (-((ljoy.axis_values[RSTICKY]/256))/2);
         }
-#ifdef OPT_GPPLAYER
-        //[GPPlayer functions]
-        if (ControlMode == GPPLAYERMODE)
-        {
-            // Lets try some speed control... Map all values if we have mapped some before
-            // or start mapping if we exceed some minimum delta from center
-            // Have to keep reminding myself that commander library already subtracted 128...
-            if (g_ServoDriver.FIsGPSeqActive() )
-            {
-                if ((g_sGPSMController != 32767)
-                    || (command.rightV > 16) || (command.rightV < -16))
-                {
-                    // We are in speed modify mode...
-                    if (command.rightV >= 0)
-                        g_sGPSMController = map(command.rightV, 0, 127, 0, 200);
-                    else
-                        g_sGPSMController = map(command.rightV, -127, 0, -200, 0);
-                    g_ServoDriver.GPSetSpeedMultiplyer(g_sGPSMController);
-                }
-            }
-
-            //Switch between sequences
-            if ((command.buttons & BUT_R1) && !(buttonsPrev & BUT_R1))
-            {
-                if (!g_ServoDriver.FIsGPSeqActive() )
-                {
-                    if (GPSeq < 5)                //Max sequence
-                    {
-                        MSound (1, 50, 1500);
-                        GPSeq = GPSeq+1;
-                    }
-                    else
-                    {
-                        MSound (2, 50, 2000, 50, 2250);
-                        GPSeq=0;
-                    }
-                }
-            }
-            //Start Sequence
-            if ((command.buttons & BUT_R2) && !(buttonsPrev & BUT_R2))
-            {
-                if (!g_ServoDriver.FIsGPSeqActive() )
-                {
-                    g_ServoDriver.GPStartSeq(GPSeq);
-                    g_sGPSMController = 32767;    // Say that we are not in Speed modify mode yet... valid ranges are 50-200 (both postive and negative...
-                }
-                else
-                {
-                                                  // tell the GP system to abort if possible...
-                    g_ServoDriver.GPStartSeq(0xff);
-                    MSound (2, 50, 2000, 50, 2000);
-                }
-            }
-
-        }
-#endif                                    // OPT_GPPLAYER
 
         //Calculate walking time delay
-        g_InControlState.InputTimeDelay = 128 - max(max(abs(command.leftH), abs(command.leftV)), abs(command.rightH));
+        g_InControlState.InputTimeDelay = 128 - max(max(abs((ljoy.axis_values[LSTICKX]/256)), abs((ljoy.axis_values[LSTICKY]/256))), abs((ljoy.axis_values[RSTICKX]/256)));
 
         //Calculate g_InControlState.BodyPos.y
         g_InControlState.BodyPos.y = max(g_BodyYOffset + g_BodyYShift,  0);
 
         // Save away the buttons state as to not process the same press twice.
-        buttonsPrev = command.buttons;
-        extPrev = command.ext;
         g_ulLastMsgTime = millis();
     }
     else
@@ -470,8 +401,8 @@ void CommanderInputController::ControlInput(void)
         {
             if ((millis() - g_ulLastMsgTime) > ARBOTIX_TO)
             {
-	        g_InControlState.fControllerInUse = true;	// make sure bypass is not used.
-                CommanderTurnRobotOff();
+                g_InControlState.fControllerInUse = true;	// make sure bypass is not used.
+                ControllerTurnRobotOff();
             }
         }
     }
@@ -479,11 +410,12 @@ void CommanderInputController::ControlInput(void)
 
 
 //==============================================================================
-// CommanderTurnRobotOff - code used couple of places so save a little room...
+// ControllerTurnRobotOff - code used couple of places so save a little room...
 //==============================================================================
-void CommanderTurnRobotOff(void)
+void ControllerTurnRobotOff(void)
 {
     //Turn off
+    printf("Turn Robot Off\n");
     g_InControlState.BodyPos.x = 0;
     g_InControlState.BodyPos.y = 0;
     g_InControlState.BodyPos.z = 0;
