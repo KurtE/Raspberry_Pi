@@ -554,6 +554,63 @@ For that:
     cd /opt/scripts/tools/
     sudo ./update_bootloader.sh 
 
+# Installing Bluez5 #
+I am currently playing with some configurations that is using the Linux Joystick device as the input device.  Currently using this with ODroid XU3-Lite and I am using it with either Playstation DS3 or DS4 controllers.  These controllers appear to use a slightly modified version of Bluetooth, which support was addded in later versions of Bluez5.  Unfortionatly Ubuntu still ships with Bluez4.   
+
+I have had some some luck now installing Bluez5, at least on Odroid Xu3.  I follow the stesp in the link: https://www.raspberrypi.org/forums/viewtopic.php?p=619713
+Which works off of the stuff in: http://www.linuxfromscratch.org/blfs/view/svn/general/bluez.html
+
+Once I go through make and make install it still does not work as the bluetooth was not started, as I found by using the command:
+
+	odroid@odroid:~$ hciconfig
+	hci0:   Type: BR/EDR  Bus: USB
+        BD Address: 00:1A:7D:DA:71:11  ACL MTU: 310:10  SCO MTU: 64:8
+        DOWN
+        RX bytes:547 acl:0 sco:0 events:27 errors:0
+        TX bytes:384 acl:0 sco:0 commands:27 errors:0
+
+So I was able to get the device up:
+
+	odroid@odroid:~$ sudo hciconfig hci0 up
+	[sudo] password for odroid:
+
+	odroid@odroid:~$ hciconfig
+	hci0:   Type: BR/EDR  Bus: USB
+        BD Address: 00:1A:7D:DA:71:11  ACL MTU: 310:10  SCO MTU: 64:8
+        UP RUNNING PSCAN
+        RX bytes:1816192 acl:95463 sco:0 events:126 errors:0
+        TX bytes:6200 acl:50 sco:0 commands:66 errors:0
+
+For the DS4 I then was able to get it to bind, by:  
+
+	odroid@odroid:~$ hcitool scan
+	Scanning ...
+        D0:27:88:70:B2:9B       n/a
+        00:3C:7F:F0:F0:0A       n/a
+
+After that I hit PS button on DS4 and was able to get it to bind (lite stays on), and the device /dev/input/js0 was created.
+
+For PS3 I think you still have to bind it using USB.  I use the sixpair program for it.  I am currently using the program from the HR-OS1 project but program is easy to find.
+
+After that I was able to get it to bind, by using the bluetoothctl program using sudo .  
+When I press PS button see message like:
+
+	[NEW] Device FC:62:B9:39:87:AB FC-62-B9-39-87-AB
+
+While still in the program I tried:
+
+	connect FC:62:B9:39:87:AB
+	agent on 
+	trust FC:62:B9:39:87:AB
+
+After that when I pressed the PS button, the lite came on and the /dev/input/js0 device was created.
+
+
+
+
+
+
+
 Warning
 =======
 
