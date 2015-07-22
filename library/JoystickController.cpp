@@ -53,12 +53,22 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  // Now define mapping tables for which joysticks we know about...
  // PS3 Don't need we are logically setup as PS3...
  // Used later on maps logical to physical. 
+ typedef struct {
+    uint8_t     map_axis;
+    uint8_t     map_button_positive;
+    uint8_t     map_button_negative;
+  } AXIS_BUTTON_MAP;
 
  // DS4
  static const uint8_t g_ltop_ds4_axis_mapping[]= {0, 1, 2, 5};
  static const uint8_t g_ptol_ds4_button_mapping[] = {
      15, 14, 13, 12, 10, 11, 8, 9, 3, 0, 1, 2, 16, 17 };   
- 
+  
+ static const AXIS_BUTTON_MAP g_abmap_ds4[] = {
+        {7, JOYSTICK_BUTTONS::D_DOWN, JOYSTICK_BUTTONS::D_UP},
+        {6, JOYSTICK_BUTTONS::D_RIGHT, JOYSTICK_BUTTONS::D_LEFT},
+        {0xff, 0xff, 0xff} };
+        
 
 
 //====================================================================
@@ -98,7 +108,7 @@ void *LinuxJoy::JoystickThreadProc(void *pv)
     bool error_reported = false;    
 
     const uint8_t*  ptol_button_mapping = NULL;    // is there any button mappings?
-//    const uint8_t*  ptol_axis_button_mapping; // any special mapping from axis to button?
+    AXIS_BUTTON_MAP const * axis_button_map = NULL;
 
     pthread_barrier_wait(&pljoy->thread_barrier_);
 
@@ -138,6 +148,7 @@ void *LinuxJoy::JoystickThreadProc(void *pv)
                 pljoy->ltop_axis_mapping_ = NULL;
                 pljoy->count_axis_mapping_ = 0;
                 ptol_button_mapping = NULL;
+                axis_button_map = NULL;
                 
                 if ((pljoy->num_of_axis_ == 27) && (pljoy->num_of_buttons_ == 19))
                 {
@@ -149,6 +160,7 @@ void *LinuxJoy::JoystickThreadProc(void *pv)
                     pljoy->ltop_axis_mapping_ = g_ltop_ds4_axis_mapping;
                     pljoy->count_axis_mapping_ = sizeof(g_ltop_ds4_axis_mapping);
                     ptol_button_mapping = g_ptol_ds4_button_mapping;
+                    axis_button_map = g_abmap_ds4;
                 }
                 else
                 {
@@ -196,6 +208,40 @@ void *LinuxJoy::JoystickThreadProc(void *pv)
                                 pljoy->thread_axis_ [ js.number ] = js.value;
                                 if (pljoy->print_level_ & 2)
                                     printf("A %d : %d\n", js.number, js.value);
+                                    
+                                if (axis_button_map)
+                                {
+                                    AXIS_BUTTON_MAP const * abm = axis_button_map;
+                                    while (abm->map_axis != 0xff)
+                                    {
+                                        if (abm->map_axis == js.number)
+                                        {
+                                            // Axis changed that has logical buttons associated.
+                                            if (js.value > 0)
+                                            {
+                                                if (pljoy->print_level_ & 1)
+                                                    printf("AB %d : 1\n", abm->map_button_positive);
+                                                pljoy->thread_buttons_ |= (1 << abm->map_button_positive);
+                                            }
+                                            else if (js.value < 0)
+                                            {
+                                                if (pljoy->print_level_ & 1)
+                                                    printf("AB %d : 1\n", abm->map_button_negative);
+                                                pljoy->thread_buttons_ |= (1 << abm->map_button_negative);
+                                            }
+                                            else
+                                            {
+                                                if (pljoy->print_level_ & 1)
+                                                    printf("AB %d %d: 0\n", abm->map_button_positive,
+                                                            abm->map_button_negative);
+                                                pljoy->thread_buttons_ &= ~(1 << abm->map_button_positive);
+                                                pljoy->thread_buttons_ &= ~(1 << abm->map_button_negative);
+                                            }
+                                            break;
+                                        }
+                                        abm++;  // point to next ne
+                                    }    
+                                }
                                 break;
                             
                             case JS_EVENT_BUTTON :
