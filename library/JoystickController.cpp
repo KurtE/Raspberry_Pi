@@ -1,4 +1,12 @@
 /*
+   JoystickController.cpp - This file contains the code that I use in my projects
+   to handle the linux /dev/input/js0 input events and keep the appropriate
+   information for me to then use in programs.
+   
+   This implemention will also try to handle information about different joysticks
+   which currently includes DS3 and DS4 and map their Axes and buttons to a logical
+   values, such that the using program does not have to worry about it.
+   
    This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
   License as published by the Free Software Foundation; either
@@ -37,20 +45,50 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define JOY_DEV "/dev/js0"
 
+//====================================================================
+// Define which axes and buttons map for different Joysticks
+//====================================================================
+// First define our logical names for buttons and indexes.
+// Probably close to PS3 mappings. 
+ // Now define mapping tables for which joysticks we know about...
+ // PS3 Don't need we are logically setup as PS3...
+ // Used later on maps logical to physical. 
 
-/* Constructor */
+ // DS4
+ static const uint8_t g_ltop_ds4_axis_mapping[]= {0, 1, 2, 5};
+ static const uint8_t g_ptol_ds4_button_mapping[] = {
+     15, 14, 13, 12, 10, 11, 8, 9, 3, 0, 1, 2, 16, 17 };   
+ 
+
+
+//====================================================================
+// Constructor 
+//====================================================================
 LinuxJoy::LinuxJoy()
 {
-    _data_changed = false;
+    data_changed_ = false;
+    print_level_ = 1;   // Will change to 0 later...
+    
+    // Set initial states
+    thread_buttons_ = 0;
+    button_values_ = 0;
+    previous_button_values_ = 0;
+    
+    
 }
 
 
+//====================================================================
+//====================================================================
 static ssize_t _read(int fd, void *buf, size_t count)
 {
 	extern ssize_t read(int fd, void *buf, size_t count);
 	return read(fd, buf, count);
 }
 
+//====================================================================
+// Main thread procedure that handles the events coming from joystick
+//====================================================================
 void *LinuxJoy::JoystickThreadProc(void *pv)
 {
     LinuxJoy *pljoy = (LinuxJoy*)pv;
@@ -59,44 +97,65 @@ void *LinuxJoy::JoystickThreadProc(void *pv)
     int joy_fd = -1;                              // File descriptor 
     bool error_reported = false;    
 
-    pthread_barrier_wait(&pljoy->_barrier);
+    const uint8_t*  ptol_button_mapping = NULL;    // is there any button mappings?
+//    const uint8_t*  ptol_axis_button_mapping; // any special mapping from axis to button?
 
-    printf("Thread start(%s)\n", pljoy->_pszDevice);
+    pthread_barrier_wait(&pljoy->thread_barrier_);
+
+    printf("Thread start(%s)\n", pljoy->input_device_name_);
 
     int ret;
     struct js_event js;
     int iIndex = 0; // index into which byte we should start reading into of the joystick stuff...
 
-    while(!pljoy->_fCancel)
+    while(!pljoy->cancel_thread_)
     {
         // First lets see if we have a joystick object yet, if not try to open.
         //
         if (joy_fd == -1)
         {
-            if ((joy_fd = open(pljoy->_pszDevice,O_RDONLY)) != -1 )
+            if ((joy_fd = open(pljoy->input_device_name_,O_RDONLY)) != -1 )
             {
-                ioctl(joy_fd, JSIOCGAXES , &(pljoy->num_of_axis));
-                ioctl(joy_fd, JSIOCGBUTTONS , &(pljoy->num_of_buttons));
-                ioctl(joy_fd, JSIOCGNAME(80), &(pljoy->name_of_joystick));
+                ioctl(joy_fd, JSIOCGAXES , &(pljoy->num_of_axis_));
+                ioctl(joy_fd, JSIOCGBUTTONS , &(pljoy->num_of_buttons_));
+                ioctl(joy_fd, JSIOCGNAME(80), &(pljoy->name_of_joystick_));
 
                 // Keep our realtime cache of Axis and buttons
-                pljoy->_axis = (int *) calloc( pljoy->num_of_axis , sizeof(int));
-                pljoy->_button = (char *) calloc(  pljoy->num_of_buttons , sizeof (char));
-                
+                pljoy->thread_axis_ = (int *) calloc( pljoy->num_of_axis_ , sizeof(int));
+               
                 // Plus our ReadMessage which caches values
-                pljoy->axis_values = (int *) calloc(pljoy->num_of_axis , sizeof(int)); 
-                pljoy->button_values = (char *) calloc( pljoy->num_of_buttons , sizeof (char));
-                pljoy->previous_button_values = (char *) calloc( pljoy->num_of_buttons , sizeof (char));
+                pljoy->axis_values_ = (int *) calloc(pljoy->num_of_axis_ , sizeof(int)); 
                 
-                if(! pljoy->_axis || ! pljoy->_button || ! pljoy->axis_values || ! pljoy->button_values || ! pljoy->previous_button_values)
+                if(! pljoy->thread_axis_ ||  ! pljoy->axis_values_)
                     return (void*)-1;      // ran out of memory???
                 
-                memset(pljoy->_axis, 0, pljoy->num_of_axis*sizeof(int));
-                memset(pljoy->_button, 0, pljoy->num_of_buttons*sizeof(char));
-                memset(pljoy->button_values, 0, pljoy->num_of_buttons*sizeof(char));  // Others will be set on first query, but need to init as this gets moved to previous...
+                memset(pljoy->thread_axis_, 0, pljoy->num_of_axis_*sizeof(int));
 
                 // Debug  will comment out later
-                printf( " Joy stick detected : %s \n \t %d axis \n\t %d buttons \n\n" , pljoy->name_of_joystick ,  pljoy->num_of_axis ,  pljoy->num_of_buttons);
+                printf( " Joy stick detected : %s \n \t %d axis \n\t %d buttons \n\n" , pljoy->name_of_joystick_ ,  pljoy->num_of_axis_ ,  pljoy->num_of_buttons_);
+                
+                // Lets try to setup button and axes mappings here.
+                pljoy->ltop_axis_mapping_ = NULL;
+                pljoy->count_axis_mapping_ = 0;
+                ptol_button_mapping = NULL;
+                
+                if ((pljoy->num_of_axis_ == 27) && (pljoy->num_of_buttons_ == 19))
+                {
+                    printf("PS3!\n");
+                }
+                else if ((pljoy->num_of_axis_ == 8) && (pljoy->num_of_buttons_ == 14))
+                {
+                    printf("DS4!\n");
+                    pljoy->ltop_axis_mapping_ = g_ltop_ds4_axis_mapping;
+                    pljoy->count_axis_mapping_ = sizeof(g_ltop_ds4_axis_mapping);
+                    ptol_button_mapping = g_ptol_ds4_button_mapping;
+                }
+                else
+                {
+                    printf("Unknown\n");
+                }    
+
+
 
                 fcntl( joy_fd, F_SETFL , O_NONBLOCK ); // use non - blocking methods
                 error_reported = false;                 // if we lose the device... 
@@ -125,24 +184,34 @@ void *LinuxJoy::JoystickThreadProc(void *pv)
             if(FD_ISSET(joy_fd, &fdset)) 
             { 
                 // try to read in rest of structure... 
-                while((!pljoy->_fCancel) && (ret = _read(joy_fd, ((char*)&js)+iIndex, sizeof(js)-iIndex)) > 0)
+                while((!pljoy->cancel_thread_) && (ret = _read(joy_fd, ((char*)&js)+iIndex, sizeof(js)-iIndex)) > 0)
                 {
                     iIndex += ret; // see how many bytes we have of the js event...
                     if (iIndex == sizeof(js)) 
                     {
-                        pthread_mutex_lock(&pljoy->lock);  // make sure we keep things consistent...
+                        pthread_mutex_lock(&pljoy->lock_);  // make sure we keep things consistent...
                         switch(js.type & ~ JS_EVENT_INIT)
                         {
                             case JS_EVENT_AXIS :
-                                pljoy->_axis [ js.number ] = js.value;
-                                //printf("A %d : %d\n", js.number, js.value);
+                                pljoy->thread_axis_ [ js.number ] = js.value;
+                                if (pljoy->print_level_ & 2)
+                                    printf("A %d : %d\n", js.number, js.value);
                                 break;
+                            
                             case JS_EVENT_BUTTON :
-                                printf("B %d : %d\n", js.number, js.value);
-                                pljoy->_button [js.number ] = js.value;
+                                // Do logical button mapping if appropriate. 
+                                int log_button = (ptol_button_mapping)? ptol_button_mapping[js.number] : 
+                                        js.number;
+                                if (pljoy->print_level_ & 1)
+                                    printf("B %d %d: %d\n", js.number, log_button, js.value);
+                                    
+                                if (js.value) 
+                                    pljoy->thread_buttons_ |= (1 << log_button);
+                                else 
+                                    pljoy->thread_buttons_ &= ~(1 << log_button);
                         }
-                        pljoy->_data_changed = true;
-                        pthread_mutex_unlock(&pljoy->lock);
+                        pljoy->data_changed_ = true;
+                        pthread_mutex_unlock(&pljoy->lock_);
                         iIndex = 0;         // start over reading from start of data...
                     }
                 }
@@ -157,83 +226,128 @@ void *LinuxJoy::JoystickThreadProc(void *pv)
 }
 
 
-
+//====================================================================
+// Begin
+//====================================================================
 bool LinuxJoy::begin(char *pszDevice)
 {
     int err;
     // Create our lock to make sure we can do stuff safely
-    if (pthread_mutex_init(&lock, NULL) != 0)
+    if (pthread_mutex_init(&lock_, NULL) != 0)
         return false;
 
-    _fCancel = false;	// Flag to let our thread(s) know to abort.
+    cancel_thread_ = false;	// Flag to let our thread(s) know to abort.
     
 
     // remember the device name
-    _pszDevice = (char*)malloc(strlen(pszDevice) + 1);
-    if (!_pszDevice)
+    input_device_name_ = (char*)malloc(strlen(pszDevice) + 1);
+    if (!input_device_name_)
     {
         printf("malloc of device name failed\n");
         return -1;
     }    
 
-    strcpy(_pszDevice, pszDevice);
+    strcpy(input_device_name_, pszDevice);
     // Now we need to create our thread for receiving messages from the joystick...
-	pthread_barrier_init(&_barrier, 0, 2);
-    err = pthread_create(&tidLinuxJoy, NULL, &JoystickThreadProc, this);
+	pthread_barrier_init(&thread_barrier_, 0, 2);
+    err = pthread_create(&tidLinuxJoy_, NULL, &JoystickThreadProc, this);
     if (err != 0)
         return false;
 
   	// sync startup
-	pthread_barrier_wait(&_barrier);
+	pthread_barrier_wait(&thread_barrier_);
 
     return true;
 }
 
+//====================================================================
+// End - release anything and kill off our worker thread
+//====================================================================
 void LinuxJoy::end()
 {
-    _fCancel = true;
+    cancel_thread_ = true;
     
    	// pthread_join to sync
-	pthread_join(tidLinuxJoy, NULL);
+	pthread_join(tidLinuxJoy_, NULL);
 
 	// destroy barrier
-	pthread_barrier_destroy(&_barrier);
+	pthread_barrier_destroy(&thread_barrier_);
 }
 
-/* process messages coming from LinuxJoy
- *  format = 0xFF RIGHT_H RIGHT_V LEFT_H LEFT_V BUTTONS EXT CHECKSUM */
+
+//====================================================================
+// ReadMsgs - Main function that using program uses to say it is 
+//    ready to get the current state of the Axes and Buttons
+//====================================================================
 int LinuxJoy::ReadMsgs()
 {
     // Probably should probably rename some of this...
-    if (_data_changed)
+    if (data_changed_)
     {
-        pthread_mutex_lock(&lock);
-        memcpy(axis_values, _axis, sizeof(_axis[0])*num_of_axis);
+        pthread_mutex_lock(&lock_);
 
-        memcpy(previous_button_values, button_values, sizeof(_button[0])*num_of_buttons);
-        memcpy(button_values, _button, sizeof(_button[0])*num_of_buttons);
+        memcpy(axis_values_, thread_axis_, sizeof(thread_axis_[0])*num_of_axis_);
+        previous_button_values_ =  button_values_;
+        button_values_ = thread_buttons_;
 
-        _data_changed = false;                     // clear out so we know if something new comes in
-        pthread_mutex_unlock(&lock);
+        data_changed_ = false;                     // clear out so we know if something new comes in
+        pthread_mutex_unlock(&lock_);
         return 1;
     }
     return 0;
 }
 
 // Decided to not inline these as may have special case code for psuedo buttons
+//====================================================================
+// button: is the button currently pressed
+//====================================================================
 bool LinuxJoy::button(int ibtn) 
 {
-    return button_values[ibtn] != 0;
+    return (button_values_ &  (1 << ibtn)) != 0;
 }
 
 
+//====================================================================
+// buttonPressed: Has the button just been pressed.
+//====================================================================
 bool LinuxJoy::buttonPressed(int ibtn) 
 {
-    return ((button_values[ibtn] != 0) && (previous_button_values[ibtn] == 0));
+    return ((button_values_ &  (1 << ibtn)) != 0) && 
+         ((previous_button_values_ &  (1 << ibtn)) == 0 );
 }
 
+//====================================================================
+// buttonReleased: Has the button just been released. 
+//====================================================================
 bool LinuxJoy::buttonReleased(int ibtn) 
 {
-    return ((button_values[ibtn] == 0) && (previous_button_values[ibtn] != 0));
+    return ((button_values_ &  (1 << ibtn)) == 0) && 
+         ((previous_button_values_ &  (1 << ibtn)) != 0 );
+}
+
+//====================================================================
+// axis
+//====================================================================
+int LinuxJoy::axis(int index_axis)
+{
+    if (ltop_axis_mapping_)
+    {
+        if (index_axis >= count_axis_mapping_)
+            return (0);    // out of range error out
+            
+        index_axis = ltop_axis_mapping_[index_axis];
+    }
+    return axisJoystick(index_axis);    // use the main one
+}
+
+//====================================================================
+// axis
+//====================================================================
+int LinuxJoy::axisJoystick(int index_axis)
+{
+    if (index_axis >= num_of_axis_)
+        return (0);    // out of range error out
+        
+    return axis_values_[index_axis];
 }
 

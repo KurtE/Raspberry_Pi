@@ -77,8 +77,28 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <stdint.h>
+
+//==============================================================================
+// Define enums for logical Axes and Button mappings
+//==============================================================================
+
+namespace JOYSTICK_AXES
+{
+  enum { LX=0, LY, RX, RY }; 
+}
+
+namespace JOYSTICK_BUTTONS
+{
+    enum { SELECT_OPT=0, L3, R3, START_SHARE, D_UP, D_RIGHT, 
+       D_DOWN, D_LEFT, L2, R2, L1, R1, TRI, CIRCLE,
+       X, SQUARE, PS, TRACK };
+}
 
 
+//==============================================================================
+// Define our Joystick class. 
+//==============================================================================
 class LinuxJoy
 {
     public:
@@ -87,38 +107,57 @@ class LinuxJoy
         void end();                              // release any resources.
         int ReadMsgs();                          // must be called regularly to clean out Serial buffer
 
-        // Define some helper functions that handle some button stuff
+        // methods for returning button states
+        uint32_t buttons()  {return button_values_;}; // return state of all buttons; 
         bool button(int ibtn);
         bool buttonPressed(int ibtn);
         bool buttonReleased(int ibtn); 
  
-
+        // methods for returning axes states
         // Keep information about the different Axis of this Joystick.
-        int num_of_axis;                         // Number of Axis
-        int *axis_values;                        // current values for the different axis
+        int axis(int index_axis);                // return logical axis value
+        int axisJoystick(int joystick_axis);     // return actual axis by js index
         
+        // For buttons, I am going to assume we have less than 32 buttons, so 
+        // keep all of them in a bitmask.
         // Likewise for buttons
-        int num_of_buttons;                      // Number of buttons
-        char *button_values;                      // Current button values
-        char *previous_button_values;             // Previous button values
+        int joystickButtonCount()  {return num_of_buttons_;};
+        int joystickAxisCount()  {return num_of_axis_;};
+        const char *JoystickName(void) {return name_of_joystick_;};
+       
         
         
         // Name of joystick...
-        char name_of_joystick[80];
+        
+        // 0x1 - print buttons, 0x2 - axes, 0x3 - both
+        void setDebugPrintLevel(uint8_t print_level) {print_level_ = print_level;} ;  
 
     private:
-        int *_axis;                              // Current values for the different axis
-        char *_button;
+        int                 *axis_values_;           // current values for the different axis
+        int                 num_of_buttons_;         // Number of buttons on physical 
+        int                 num_of_axis_;            // Number of Axis
+        char                name_of_joystick_[80];
+
+        uint32_t            button_values_;          // Current button values;
+        uint32_t            previous_button_values_; // The previous button values. 
         
         //Private stuff for Linux threading and file descriptor, and open file...
-        pthread_mutex_t lock;                    // A lock to make sure we don't walk over ourself...
-        bool _data_changed;                       // Do we have a valid packet?
-        unsigned char bInBuf[7];                 // Input buffer we use in the thread to process partial messages.
-        char *_pszDevice;
-        bool _fCancel;                           // Cancel any input threads.
-        pthread_t tidLinuxJoy;                       // Thread Id of our reader thread...
-       	pthread_barrier_t _barrier;
+        pthread_mutex_t     lock_;                   // A lock to make sure we don't walk over ourself...
+        bool                data_changed_;           // Do we have a valid packet?
+        char                *input_device_name_;     // Our device name /dev/input/ps0
+        bool                cancel_thread_;          // Cancel any input threads.
+        uint8_t             print_level_;            // debug print level. 
+        pthread_t           tidLinuxJoy_;            // Thread Id of our reader thread...
+       	pthread_barrier_t   thread_barrier_;
+        const uint8_t*      ltop_axis_mapping_;      // is there any axis mappings?
+        int                 count_axis_mapping_;     // size of it
+        
+        // Values updated by worker thread.
+        uint32_t            thread_buttons_;         // get bit map of all button states
+        int                 *thread_axis_;           // Current values for the different axis
+
         static void *JoystickThreadProc(void *);
+        
 };
 
 #endif

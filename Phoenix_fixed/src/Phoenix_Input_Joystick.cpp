@@ -74,13 +74,7 @@
 #include "speak.h"
 #endif
 
-// Define which axes is used for the different Joysticks
-enum {
-    LSTICKX=0, LSTICKY, RSTICKX, RSTICKY=5 
-    };
-    
- enum {BUT_SQUARE=0, BUT_X, BUT_CIRCLE, BUT_TRI, BUT_L1, BUT_R1, 
-    BUT_L2, BUT_R2, BUT_SHARE, BUT_OPT, BUT_L3, BUT_R3, BUT_PS, BUT_TRACK};
+ 
  
 //[CONSTANTS]
 enum
@@ -123,7 +117,7 @@ extern "C"
 //=============================================================================
 LinuxJoy ljoy = LinuxJoy();     // create our joystick object
 
-unsigned long g_ulLastMsgTime;
+unsigned long g_ulLastMsgTime = (unsigned long)-1;
 short  g_sGPSMController;                         // What GPSM value have we calculated. 0xff - Not used yet
 
 #define JoystickInputController InputController
@@ -145,10 +139,10 @@ extern void ControllerTurnRobotOff(void);
 #define szDevice "/dev/input/js0"
 //==============================================================================
 // This is The function that is called by the Main program to initialize
-//the input controller, which in this case is the PS2 controller
-//process any commands.
+//the input controller, which in this case is a generic Linux Joystick object
+// For a few of them we will try to detect which one it is and map the buttons
+// and axes...
 //==============================================================================
-// If both PS2 and XBee are defined then we will become secondary to the xbee
 void JoystickInputController::Init(void)
 {
     //  DBGSerial.println("Init Commander Start");
@@ -189,9 +183,27 @@ void JoystickInputController::ControlInput(void)
     // See if we have a new command available...
     if(ljoy.ReadMsgs() > 0)
     {
+        // See if this is the first message we have received
+        if (g_ulLastMsgTime == (unsigned long)-1)
+        {
+            // First valid message see if we can figure out what it is from...
+            printf("Firt JS0 even: %d axes %d buttons Name: %s\n", ljoy.joystickAxisCount(), 
+                    ljoy.joystickButtonCount(),
+                    ljoy.JoystickName());
+            if ((ljoy.joystickAxisCount() == 27) && (ljoy.joystickButtonCount() == 19))
+            {
+                printf("PS3!\n");
+            }
+            else if ((ljoy.joystickAxisCount() == 8) && (ljoy.joystickButtonCount() == 14))
+            {
+                printf("DS4!\n");
+            }
+        }
+        // Save message time so we may detect timeouts.
+        g_ulLastMsgTime = millis();
 
         // We have a message see if we have turned the robot on or not...
-        if (ljoy.buttonPressed(BUT_SHARE)) 
+        if (ljoy.buttonPressed(JOYSTICK_BUTTONS::START_SHARE)) 
         {
             if (!g_InControlState.fRobotOn)
             {
@@ -210,17 +222,20 @@ void JoystickInputController::ControlInput(void)
         if ( !g_InControlState.fRobotOn)
             return;
         
+        // In some cases we update values as to keep other places to use the values
+        int axes_rx = ljoy.axis(JOYSTICK_AXES::RX);
+        
         // Experimenting with trying to detect when IDLE.  maybe set a state of
         // of no button pressed and all joysticks are in the DEADBAND area...
-        g_InControlState.fControllerInUse = /*ljoy.buttons*/ 0 
-            || (abs((ljoy.axis_values[LSTICKX]/256)) >= cTravelDeadZone)
-            || (abs((ljoy.axis_values[LSTICKY]/256)) >= cTravelDeadZone)
-            || (abs((ljoy.axis_values[RSTICKX]/256)) >= cTravelDeadZone)
-            || (abs((ljoy.axis_values[RSTICKY]/256)) >= cTravelDeadZone);
+        g_InControlState.fControllerInUse = ljoy.buttons()
+            || (abs((ljoy.axis(JOYSTICK_AXES::LX)/256)) >= cTravelDeadZone)
+            || (abs((ljoy.axis(JOYSTICK_AXES::LY)/256)) >= cTravelDeadZone)
+            || (abs((axes_rx/256)) >= cTravelDeadZone)
+            || (abs((ljoy.axis(JOYSTICK_AXES::RY)/256)) >= cTravelDeadZone);
         // [SWITCH MODES]
 
         // Cycle through modes...
-        if (ljoy.buttonPressed(BUT_OPT))
+        if (ljoy.buttonPressed(JOYSTICK_BUTTONS::SELECT_OPT))
         {
             if (++ControlMode >= MODECNT)
             {
@@ -236,7 +251,7 @@ void JoystickInputController::ControlInput(void)
 
         //[Common functions]
         //Switch Balance mode on/off
-        if (ljoy.buttonPressed(BUT_SQUARE))
+        if (ljoy.buttonPressed(JOYSTICK_BUTTONS::SQUARE))
         {
             g_InControlState.BalanceMode = !g_InControlState.BalanceMode;
             if (g_InControlState.BalanceMode)
@@ -250,7 +265,7 @@ void JoystickInputController::ControlInput(void)
         }
 
         //Stand up, sit down
-        if (ljoy.buttonPressed(BUT_TRI))
+        if (ljoy.buttonPressed(JOYSTICK_BUTTONS::TRI))
         {
             if (g_BodyYOffset>0)
                 g_BodyYOffset = 0;
@@ -262,14 +277,14 @@ void JoystickInputController::ControlInput(void)
         // We move each pass through this by a percentage of how far we are from center in each direction
         // We get feedback with height by seeing the robot move up and down.  For Speed, I put in sounds
         // which give an idea, but only for those whoes robot has a speaker
-        if (ljoy.button(BUT_L1))
+        if (ljoy.button(JOYSTICK_BUTTONS::L1))
         {
             // raise or lower the robot on the joystick up /down
             // Maybe should have Min/Max
-            g_BodyYOffset += (ljoy.axis_values[RSTICKY]/256)/25;
+            g_BodyYOffset += (ljoy.axis(JOYSTICK_AXES::RY)/256)/25;
 
             // Likewise for Speed control
-            int dspeed = (ljoy.axis_values[RSTICKX]/256) / 16;      //
+            int dspeed = (axes_rx/256) / 16;      //
             if ((dspeed < 0) && g_InControlState.SpeedControl)
             {
                 if ((word)(-dspeed) <  g_InControlState.SpeedControl)
@@ -286,14 +301,14 @@ void JoystickInputController::ControlInput(void)
                 MSound( 1, 50, 1000+g_InControlState.SpeedControl);
             }
 
-            ljoy.axis_values[RSTICKX] = 0;                    // don't walk when adjusting the speed here...
+            axes_rx = 0;                    // don't walk when adjusting the speed here...
         }
 
         //[Walk functions]
         if (ControlMode == WALKMODE)
         {
             //Switch gates
-            if ((ljoy.buttonPressed(BUT_R1))
+            if ((ljoy.buttonPressed(JOYSTICK_BUTTONS::R1))
                                                   //No movement
                 && abs(g_InControlState.TravelLength.x)<cTravelDeadZone
                 && abs(g_InControlState.TravelLength.z)<cTravelDeadZone
@@ -322,7 +337,7 @@ void JoystickInputController::ControlInput(void)
             }
 
             //Double leg lift height
-            if (ljoy.buttonPressed(BUT_R2))
+            if (ljoy.buttonPressed(JOYSTICK_BUTTONS::R2))
             {
                 MSound( 1, 50, 2000);
                                                   // wrap around mode
@@ -335,7 +350,7 @@ void JoystickInputController::ControlInput(void)
             }
 
             // Switch between Walk method 1 && Walk method 2
-            if (ljoy.buttonPressed(BUT_R3))
+            if (ljoy.buttonPressed(JOYSTICK_BUTTONS::R3))
             {
                 MSound (1, 50, 2000);
                 WalkMethod = !WalkMethod;
@@ -344,12 +359,12 @@ void JoystickInputController::ControlInput(void)
             //Walking
             if (WalkMethod)                       //(Walk Methode)
                                                   //Right Stick Up/Down
-                g_InControlState.TravelLength.z = ((ljoy.axis_values[RSTICKY]/256));
+                g_InControlState.TravelLength.z = ((ljoy.axis(JOYSTICK_AXES::RY)/256));
 
             else
             {
-                g_InControlState.TravelLength.x = -(ljoy.axis_values[LSTICKX]/256);
-                g_InControlState.TravelLength.z = (ljoy.axis_values[LSTICKY]/256);
+                g_InControlState.TravelLength.x = -(ljoy.axis(JOYSTICK_AXES::LX)/256);
+                g_InControlState.TravelLength.z = (ljoy.axis(JOYSTICK_AXES::LY)/256);
             }
 
             if (!DoubleTravelOn)                  //(Double travel length)
@@ -359,40 +374,38 @@ void JoystickInputController::ControlInput(void)
             }
 
                                                   //Right Stick Left/Right
-            g_InControlState.TravelLength.y = -((ljoy.axis_values[RSTICKX]/256))/4;
+            g_InControlState.TravelLength.y = -((axes_rx/256))/4;
         }
 
         //[Translate functions]
         g_BodyYShift = 0;
         if (ControlMode == TRANSLATEMODE)
         {
-            g_InControlState.BodyPos.x =  SmoothControl((((ljoy.axis_values[LSTICKX]/256))*2/3), g_InControlState.BodyPos.x, SmDiv);
-            g_InControlState.BodyPos.z =  SmoothControl((((ljoy.axis_values[LSTICKY]/256))*2/3), g_InControlState.BodyPos.z, SmDiv);
-            g_InControlState.BodyRot1.y = SmoothControl((((ljoy.axis_values[RSTICKX]/256))*2), g_InControlState.BodyRot1.y, SmDiv);
+            g_InControlState.BodyPos.x =  SmoothControl((((ljoy.axis(JOYSTICK_AXES::LX)/256))*2/3), g_InControlState.BodyPos.x, SmDiv);
+            g_InControlState.BodyPos.z =  SmoothControl((((ljoy.axis(JOYSTICK_AXES::LY)/256))*2/3), g_InControlState.BodyPos.z, SmDiv);
+            g_InControlState.BodyRot1.y = SmoothControl((((axes_rx/256))*2), g_InControlState.BodyRot1.y, SmDiv);
 
-            //      g_InControlState.BodyPos.x = ((ljoy.axis_values[LSTICKX]/256))/2;
-            //      g_InControlState.BodyPos.z = -((ljoy.axis_values[LSTICKY]/256))/3;
-            //      g_InControlState.BodyRot1.y = ((ljoy.axis_values[RSTICKX]/256))*2;
-            g_BodyYShift = (-((ljoy.axis_values[RSTICKY]/256))/2);
+            //      g_InControlState.BodyPos.x = ((ljoy.axis(JOYSTICK_AXES::LX)/256))/2;
+            //      g_InControlState.BodyPos.z = -((ljoy.axis(JOYSTICK_AXES::LY)/256))/3;
+            //      g_InControlState.BodyRot1.y = ((axes_rx/256))*2;
+            g_BodyYShift = (-((ljoy.axis(JOYSTICK_AXES::RY)/256))/2);
         }
 
         //[Rotate functions]
         if (ControlMode == ROTATEMODE)
         {
-            g_InControlState.BodyRot1.x = ((ljoy.axis_values[LSTICKY]/256));
-            g_InControlState.BodyRot1.y = ((ljoy.axis_values[RSTICKX]/256))*2;
-            g_InControlState.BodyRot1.z = ((ljoy.axis_values[LSTICKX]/256));
-            g_BodyYShift = (-((ljoy.axis_values[RSTICKY]/256))/2);
+            g_InControlState.BodyRot1.x = ((ljoy.axis(JOYSTICK_AXES::LY)/256));
+            g_InControlState.BodyRot1.y = ((axes_rx/256))*2;
+            g_InControlState.BodyRot1.z = ((ljoy.axis(JOYSTICK_AXES::LX)/256));
+            g_BodyYShift = (-((ljoy.axis(JOYSTICK_AXES::RY)/256))/2);
         }
 
         //Calculate walking time delay
-        g_InControlState.InputTimeDelay = 128 - max(max(abs((ljoy.axis_values[LSTICKX]/256)), abs((ljoy.axis_values[LSTICKY]/256))), abs((ljoy.axis_values[RSTICKX]/256)));
+        g_InControlState.InputTimeDelay = 128 - max(max(abs((ljoy.axis(JOYSTICK_AXES::LX)/256)), abs((ljoy.axis(JOYSTICK_AXES::LY)/256))), abs((axes_rx/256)));
 
         //Calculate g_InControlState.BodyPos.y
         g_InControlState.BodyPos.y = max(g_BodyYOffset + g_BodyYShift,  0);
 
-        // Save away the buttons state as to not process the same press twice.
-        g_ulLastMsgTime = millis();
     }
     else
     {
