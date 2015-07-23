@@ -181,7 +181,7 @@ void JoystickInputController::AllowControllerInterrupts(boolean fAllow)
 void JoystickInputController::ControlInput(void)
 {
     // See if we have a new command available...
-    if(ljoy.ReadMsgs() > 0)
+    if(ljoy.readMsgs() > 0)
     {
         // See if this is the first message we have received
         if (g_ulLastMsgTime == (unsigned long)-1)

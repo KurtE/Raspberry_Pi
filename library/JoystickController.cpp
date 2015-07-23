@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // Note: This one is hacked up to try to compile under linux...
 
 #include "JoystickController.h"
+#include "ArduinoDefs.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <termios.h>
@@ -83,6 +84,8 @@ LinuxJoy::LinuxJoy()
     thread_buttons_ = 0;
     button_values_ = 0;
     previous_button_values_ = 0;
+    repeat_delay_ms_ = 50;              // Max 20 per second? 
+    data_valid_ = false;
     
     
 }
@@ -171,6 +174,7 @@ void *LinuxJoy::JoystickThreadProc(void *pv)
 
                 fcntl( joy_fd, F_SETFL , O_NONBLOCK ); // use non - blocking methods
                 error_reported = false;                 // if we lose the device... 
+                pljoy->data_valid_ = true;                     // let system know we are valid... 
             }
             else
             {
@@ -283,6 +287,7 @@ bool LinuxJoy::begin(char *pszDevice)
         return false;
 
     cancel_thread_ = false;	// Flag to let our thread(s) know to abort.
+    last_message_time_ = millis();      // when did we last return a message?
     
 
     // remember the device name
@@ -325,18 +330,19 @@ void LinuxJoy::end()
 // ReadMsgs - Main function that using program uses to say it is 
 //    ready to get the current state of the Axes and Buttons
 //====================================================================
-int LinuxJoy::ReadMsgs()
+int LinuxJoy::readMsgs()
 {
     // Probably should probably rename some of this...
-    if (data_changed_)
-    {
+
+    if (data_valid_ && (data_changed_ || ((millis() - last_message_time_) >= repeat_delay_ms_)))
+     {
         pthread_mutex_lock(&lock_);
 
         memcpy(axis_values_, thread_axis_, sizeof(thread_axis_[0])*num_of_axis_);
         previous_button_values_ =  button_values_;
         button_values_ = thread_buttons_;
-
-        data_changed_ = false;                     // clear out so we know if something new comes in
+        last_message_time_ = millis();              // remember when we received the message. 
+        data_changed_ = false;                      // clear out so we know if something new comes in
         pthread_mutex_unlock(&lock_);
         return 1;
     }
@@ -349,7 +355,7 @@ int LinuxJoy::ReadMsgs()
 //====================================================================
 bool LinuxJoy::button(int ibtn) 
 {
-    return (button_values_ &  (1 << ibtn)) != 0;
+    return ((button_values_ &  (1 << ibtn)) != 0);
 }
 
 
