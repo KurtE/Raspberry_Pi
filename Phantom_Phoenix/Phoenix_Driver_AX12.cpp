@@ -57,7 +57,7 @@ word      g_awGoalAXPos[NUMSERVOS];
 // Global - Local to this file only...
 //=============================================================================
 #ifdef QUADMODE
-static const byte cPinTable[] PROGMEM = {
+static const byte cPinTable[]  = {
   cRRCoxaPin,  cRFCoxaPin,  cLRCoxaPin,  cLFCoxaPin, 
   cRRFemurPin, cRFFemurPin, cLRFemurPin, cLFFemurPin,
   cRRTibiaPin, cRFTibiaPin, cLRTibiaPin, cLFTibiaPin
@@ -69,7 +69,7 @@ static const byte cPinTable[] PROGMEM = {
 #endif
 };
 #else
-static const byte cPinTable[] PROGMEM = {
+static const byte cPinTable[]  = {
   cRRCoxaPin,  cRMCoxaPin,  cRFCoxaPin,  cLRCoxaPin,  cLMCoxaPin,  cLFCoxaPin, 
   cRRFemurPin, cRMFemurPin, cRFFemurPin, cLRFemurPin, cLMFemurPin, cLFFemurPin,
   cRRTibiaPin, cRMTibiaPin, cRFTibiaPin, cLRTibiaPin, cLMTibiaPin, cLFTibiaPin
@@ -141,9 +141,9 @@ void ServoDriver::Init(void) {
   bioloid.poseSize(NUMSERVOS);  // Method in this version
   
   bioloid.readPose();
-
+#ifdef USB2AX_REG_VOLTAGE
   ax12SetRegister(AX_ID_DEVICE, USB2AX_REG_VOLTAGE, cPinTable[FIRSTFEMURPIN]);
-
+#endif
   g_fAXSpeedControl = false;
 
 #ifdef OPT_GPPLAYER
@@ -165,7 +165,15 @@ void ServoDriver::Init(void) {
 void ServoDriver::Cleanup(void) {
     // Do any cleanup that the driver may need.
     printf("ServoDriver::Cleanup\n\r");
+#ifdef USB2AX_REG_VOLTAGE
     ax12SetRegister(AX_ID_DEVICE, USB2AX_REG_VOLTAGE, 0);   // Turn off the voltage testing...
+#endif
+    // Turn off all of the servo LEDS...  Maybe use broadcast?
+    for (int iServo=0; iServo < NUMSERVOS; iServo++) {
+		dxl_write_byte((cPinTable[iServo]), AX_LED, 0);
+		dxl_get_result();   // don't care for now
+    }
+
 }
 
 //--------------------------------------------------------------------
@@ -179,8 +187,9 @@ void ServoDriver::Cleanup(void) {
 #define VOLTAGE_TIME_TO_ERROR          3000    // Error out if no valid item is returned in 3 seconds...
 word g_wLastVoltage = 0xffff;    // save the last voltage we retrieved...
 byte g_bLegVoltage = 0;		// what leg did we last check?
-unsigned long g_ulTimeLastBatteryVoltage;
+unsigned long g_ulTimeLastBatteryVoltage = 0;
 
+#ifdef USB2AX_REG_VOLTAGE
 word ServoDriver::GetBatteryVoltage(void) {
   // The USB2AX is caching informatation for us, so simply ask it for the data.  If this is still
   // too much overhead, then we may want to only do this on timer...
@@ -195,6 +204,35 @@ word ServoDriver::GetBatteryVoltage(void) {
   return ((wVoltage != (word)-1)? wVoltage*10 : (word)-1);
     
 }
+#else
+
+// 
+word ServoDriver::GetBatteryVoltage(void) {
+    // The USB2AX is caching informatation for us, so simply ask it for the data.  If this is still
+    // too much overhead, then we may want to only do this on timer...
+    // Lets cycle through the Tibia servos asking for voltages as they may be the ones doing the most work...
+    unsigned long uldt = millis() - g_ulTimeLastBatteryVoltage;
+    if ((uldt > VOLTAGE_MAX_TIME_BETWEEN_CALLS) || ((uldt > VOLTAGE_MIN_TIME_BETWEEN_CALLS && !bioloid.interpolating()))) {
+
+        word wVoltage = (word)ax12GetRegister(cPinTable[FIRSTFEMURPIN /*+ g_bLegVoltage++*/], AX_PRESENT_VOLTAGE, 1);
+        if (g_bLegVoltage == CNT_LEGS)
+            g_bLegVoltage = 0;
+
+        if (wVoltage && (wVoltage != 0xffff))  {
+            g_ulTimeLastBatteryVoltage = millis();
+
+            if (wVoltage != g_wLastVoltage) {
+                printf("Voltage: %d\n\r", wVoltage);
+                g_wLastVoltage = wVoltage;
+            }    
+        } else if ((uldt > VOLTAGE_TIME_TO_ERROR) && (g_wLastVoltage != 0xffff)) {
+            printf("Voltage: error timeout");
+            g_wLastVoltage = 0xffff;
+        }    
+    }
+    return ((g_wLastVoltage != (word)-1)? g_wLastVoltage*10 : (word)-1);
+}
+#endif
 
 //--------------------------------------------------------------------
 //[GP PLAYER]
@@ -306,12 +344,12 @@ void ServoDriver::OutputServoInfoForLeg(byte LegIndex, short sCoxaAngle1, short 
     }
     else {    
       // With new library we set by Index.  Note Index defaults to servoID - 1
-      bioloid.setNextPoseByIndex(pgm_read_byte(&cPinTable[FIRSTCOXAPIN+LegIndex])-1, wCoxaSDV);
-      bioloid.setNextPoseByIndex(pgm_read_byte(&cPinTable[FIRSTFEMURPIN+LegIndex])-1, wFemurSDV);
-      bioloid.setNextPoseByIndex(pgm_read_byte(&cPinTable[FIRSTTIBIAPIN+LegIndex])-1, wTibiaSDV);
+      bioloid.setNextPoseByIndex((cPinTable[FIRSTCOXAPIN+LegIndex])-1, wCoxaSDV);
+      bioloid.setNextPoseByIndex((cPinTable[FIRSTFEMURPIN+LegIndex])-1, wFemurSDV);
+      bioloid.setNextPoseByIndex((cPinTable[FIRSTTIBIAPIN+LegIndex])-1, wTibiaSDV);
 #ifdef c4DOF
-      if ((byte)pgm_read_byte(&cTarsLength[LegIndex]))   // We allow mix of 3 and 4 DOF legs...
-        bioloid.setNextPoseByIndex(pgm_read_byte(&cPinTable[FIRSTTARSPIN+LegIndex])-1, wTarsSDV);
+      if ((byte)(cTarsLength[LegIndex]))   // We allow mix of 3 and 4 DOF legs...
+        bioloid.setNextPoseByIndex((cPinTable[FIRSTTARSPIN+LegIndex])-1, wTarsSDV);
 #endif
     }
   }
@@ -449,11 +487,6 @@ void ServoDriver::FreeServos(void)
   if (ServosEnabled) {
     g_InputController.AllowControllerInterrupts(false);    // If on xbee on hserial tell hserial to not processess...
     SetRegOnAllServos(AX_TORQUE_ENABLE, 0);
-#if 0
-    for (byte i = 0; i < NUMSERVOS; i++) {
-      Relax(pgm_read_byte(&cPinTable[i]));
-    }
-#endif    
     g_InputController.AllowControllerInterrupts(true);    
     g_fServosFree = true;
   }
@@ -473,7 +506,7 @@ void ServoDriver::IdleTime(void)
     g_iIdleServoNum = 0;
     g_iIdleLedState = 1 - g_iIdleLedState;
   }
-  dxl_write_byte(pgm_read_byte(&cPinTable[g_iIdleServoNum]), AX_LED, g_iIdleLedState);
+  dxl_write_byte((cPinTable[g_iIdleServoNum]), AX_LED, g_iIdleLedState);
   dxl_get_result();   // don't care for now
 }
 
@@ -491,7 +524,7 @@ void SetRegOnAllServos(uint8_t bReg, uint8_t bVal)
     dxl_set_txpacket_length(2*NUMSERVOS+3);
     
     for (byte i = 0; i < NUMSERVOS; i++) {
-        dxl_set_txpacket_parameter(2+i*2, pgm_read_byte(&cPinTable[i]));       // 1 byte
+        dxl_set_txpacket_parameter(2+i*2, (cPinTable[i]));       // 1 byte
         dxl_set_txpacket_parameter(3+i*2, bVal);       // 1 byte
     }
     dxl_txrx_packet();
@@ -513,11 +546,6 @@ void MakeSureServosAreOn(void)
     bioloid.readPose();
 
     SetRegOnAllServos(AX_TORQUE_ENABLE, 1);
-#if 0
-    for (byte i = 0; i < NUMSERVOS; i++) {
-      TorqueOn(pgm_read_byte(&cPinTable[i]));
-    }
-#endif    
     g_InputController.AllowControllerInterrupts(true);    
     g_fServosFree = false;
   }   
@@ -531,15 +559,15 @@ void MakeSureServosAreOn(void)
 //==============================================================================
 void ServoDriver::ShowTerminalCommandList(void) 
 {
-  DBGSerial.println(F("M - Toggle Motors on or off"));
-  DBGSerial.println(F("F<frame length> - FL in ms"));    // BUGBUG:: 
-  DBGSerial.println(F("A - Toggle AX12 speed control"));
-  DBGSerial.println(F("T - Test Servos"));
+  DBGSerial.println("M - Toggle Motors on or off");
+  DBGSerial.println("F<frame length> - FL in ms");    // BUGBUG::
+  DBGSerial.println("A - Toggle AX12 speed control");
+  DBGSerial.println("T - Test Servos");
 #ifdef OPT_PYPOSE
-  DBGSerial.println(F("P<DL PC> - Pypose"));
+  DBGSerial.println("P<DL PC> - Pypose");
 #endif
 #ifdef OPT_FIND_SERVO_OFFSETS
-  DBGSerial.println(F("O - Enter Servo offset mode"));
+  DBGSerial.println("O - Enter Servo offset mode");
 #endif        
 }
 
@@ -552,31 +580,31 @@ boolean ServoDriver::ProcessTerminalCommand(byte *psz, byte bLen)
   if ((bLen == 1) && ((*psz == 'm') || (*psz == 'M'))) {
     g_fEnableServos = !g_fEnableServos;
     if (g_fEnableServos) 
-      DBGSerial.println(F("Motors are on"));
+      DBGSerial.println("Motors are on");
     else
-      DBGSerial.println(F("Motors are off"));
+      DBGSerial.println("Motors are off");
 
     return true;  
   } 
 
   if ((bLen == 1) && ((*psz == 't') || (*psz == 'T'))) {
     // Test to see if all servos are responding...
-    for(int i=1;i<=NUMSERVOS;i++){
+    for(int i=0;i<NUMSERVOS;i++){
       word w;
-      w = ax12GetRegister(i,AX_PRESENT_POSITION_L, 2);
-      DBGSerial.print(i,DEC);
-      DBGSerial.print(F("="));
+      w = ax12GetRegister(cPinTable[i],AX_PRESENT_POSITION_L, 2);
+      DBGSerial.print(cPinTable[i],DEC);
+      DBGSerial.print("=");
       DBGSerial.println(w, DEC);
-      delay(25);   
+      delay(50);   
     }
   }
 
   if ((bLen == 1) && ((*psz == 'a') || (*psz == 'A'))) {
     g_fAXSpeedControl = !g_fAXSpeedControl;
     if (g_fAXSpeedControl) 
-      DBGSerial.println(F("AX12 Speed Control"));
+      DBGSerial.println("AX12 Speed Control");
     else
-      DBGSerial.println(F("Bioloid Speed"));
+      DBGSerial.println("Bioloid Speed");
   }
   if ((bLen >= 1) && ((*psz == 'f') || (*psz == 'F'))) {
     psz++;  // need to get beyond the first character
@@ -587,7 +615,7 @@ boolean ServoDriver::ProcessTerminalCommand(byte *psz, byte bLen)
       bFrame = bFrame*10 + *psz++ - '0';
     }
     if (bFrame != 0) {
-      DBGSerial.print(F("New Servo Cycles per second: "));
+      DBGSerial.print("New Servo Cycles per second: ");
       DBGSerial.println(1000/bFrame, DEC);
       extern BioloidControllerEx bioloid;
       bioloid.frameLength = bFrame;
@@ -609,6 +637,16 @@ boolean ServoDriver::ProcessTerminalCommand(byte *psz, byte bLen)
 }
 #endif    
 
+#ifdef OPT_BACKGROUND_PROCESS
+//==============================================================================
+// BackgroundProcess:
+// If using old Bioloid library may need to do some interpolation.
+//==============================================================================
+void ServoDriver::BackgroundProcess(void)
+{
+    bioloid.interpolateStep(false);
+}
+#endif
 
 
 //==============================================================================

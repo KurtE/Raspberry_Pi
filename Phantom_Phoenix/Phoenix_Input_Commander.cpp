@@ -78,12 +78,12 @@
 #ifdef OPT_GPPLAYER
 enum
 {
-    WALKMODE=0, TRANSLATEMODE, ROTATEMODE, SINGLELEGMODE, GPPLAYERMODE, MODECNT
+    WALKMODE=0, TRANSLATEMODE, ROTATEMODE, GPPLAYERMODE, MODECNT
 };
 #else
 enum
 {
-    WALKMODE=0, TRANSLATEMODE, ROTATEMODE, SINGLELEGMODE, MODECNT
+    WALKMODE=0, TRANSLATEMODE, ROTATEMODE, MODECNT
 };
 #endif
 enum
@@ -92,25 +92,20 @@ enum
 };
 
 #ifdef OPT_ESPEAK
-#define SpeakStr(psz) Speak.Speak((psz), true)
 extern "C"
 {
     // Move the Gait Names to program space...
-    const char s_sGN1[] PROGMEM = "Ripple 12";
-    const char s_sGN2[] PROGMEM = "Tripod 8";
-    const char s_sGN3[] PROGMEM = "Tripple 12";
-    const char s_sGN4[] PROGMEM = "Tripple 16";
-    const char s_sGN5[] PROGMEM = "Wave 24";
-    const char s_sGN6[] PROGMEM = "Tripod 6";
-    PGM_P s_asGateNames[] PROGMEM =
+    const char s_sGN1[]  = "Ripple 12";
+    const char s_sGN2[]  = "Tripod 8";
+    const char s_sGN3[]  = "Tripple 12";
+    const char s_sGN4[]  = "Tripple 16";
+    const char s_sGN5[]  = "Wave 24";
+    const char s_sGN6[]  = "Tripod 6";
+    const char * s_asGateNames[]  =
     {
         s_sGN1, s_sGN2, s_sGN3, s_sGN4, s_sGN5, s_sGN6
     };
 }
-
-
-#else
-#define SpeakStr(PSZ)
 #endif
 
 #define cTravelDeadZone 4                         //The deadzone for the analog input from the remote
@@ -198,8 +193,17 @@ void CommanderInputController::Init(void)
     WalkMethod = false;
     //  DBGSerial.println("Init Commander End");
 
-    SpeakStr("Init");
+    SpeakStr("Start");
 
+}
+
+
+//==============================================================================
+// Cleanup - Allows us to cleanup at the end
+//==============================================================================
+void CommanderInputController::Cleanup(void)
+{
+    command.end();
 }
 
 
@@ -229,10 +233,10 @@ void CommanderInputController::ControlInput(void)
         // Experimenting with trying to detect when IDLE.  maybe set a state of
         // of no button pressed and all joysticks are in the DEADBAND area...
         g_InControlState.fControllerInUse = command.buttons 
-            || (abs(command.rightH) >= cTravelDeadZone)
-            || (abs(command.rightV) >= cTravelDeadZone)
             || (abs(command.leftH) >= cTravelDeadZone)
-            || (abs(command.leftV) >= cTravelDeadZone);
+            || (abs(command.leftV) >= cTravelDeadZone)
+            || (abs(command.rightH) >= cTravelDeadZone)
+            || (abs(command.rightV) >= cTravelDeadZone);
         // [SWITCH MODES]
 
         // Cycle through modes...
@@ -247,8 +251,6 @@ void CommanderInputController::ControlInput(void)
             {
                 MSound( 1, 50, 2000);
             }
-            if (ControlMode != SINGLELEGMODE)
-                g_InControlState.SelectedLeg=255;
 
         }
 
@@ -284,10 +286,10 @@ void CommanderInputController::ControlInput(void)
         {
             // raise or lower the robot on the joystick up /down
             // Maybe should have Min/Max
-            g_BodyYOffset += command.leftV/25;
+            g_BodyYOffset += command.rightV/25;
 
             // Likewise for Speed control
-            int dspeed = command.leftH / 16;      //
+            int dspeed = command.rightH / 16;      //
             if ((dspeed < 0) && g_InControlState.SpeedControl)
             {
                 if ((word)(-dspeed) <  g_InControlState.SpeedControl)
@@ -304,7 +306,7 @@ void CommanderInputController::ControlInput(void)
                 MSound( 1, 50, 1000+g_InControlState.SpeedControl);
             }
 
-            command.leftH = 0;                    // don't walk when adjusting the speed here...
+            command.rightH = 0;                    // don't walk when adjusting the speed here...
         }
 
         //[Walk functions]
@@ -362,12 +364,12 @@ void CommanderInputController::ControlInput(void)
             //Walking
             if (WalkMethod)                       //(Walk Methode)
                                                   //Right Stick Up/Down
-                g_InControlState.TravelLength.z = (command.leftV);
+                g_InControlState.TravelLength.z = (command.rightV);
 
             else
             {
-                g_InControlState.TravelLength.x = -command.rightH;
-                g_InControlState.TravelLength.z = command.rightV;
+                g_InControlState.TravelLength.x = -command.leftH;
+                g_InControlState.TravelLength.z = command.leftV;
             }
 
             if (!DoubleTravelOn)                  //(Double travel length)
@@ -377,30 +379,30 @@ void CommanderInputController::ControlInput(void)
             }
 
                                                   //Right Stick Left/Right
-            g_InControlState.TravelLength.y = -(command.leftH)/4;
+            g_InControlState.TravelLength.y = -(command.rightH)/4;
         }
 
         //[Translate functions]
         g_BodyYShift = 0;
         if (ControlMode == TRANSLATEMODE)
         {
-            g_InControlState.BodyPos.x =  SmoothControl(((command.rightH)*2/3), g_InControlState.BodyPos.x, SmDiv);
-            g_InControlState.BodyPos.z =  SmoothControl(((command.rightV)*2/3), g_InControlState.BodyPos.z, SmDiv);
-            g_InControlState.BodyRot1.y = SmoothControl(((command.leftH)*2), g_InControlState.BodyRot1.y, SmDiv);
+            g_InControlState.BodyPos.x =  SmoothControl(((command.leftH)*2/3), g_InControlState.BodyPos.x, SmDiv);
+            g_InControlState.BodyPos.z =  SmoothControl(((command.leftV)*2/3), g_InControlState.BodyPos.z, SmDiv);
+            g_InControlState.BodyRot1.y = SmoothControl(((command.rightH)*2), g_InControlState.BodyRot1.y, SmDiv);
 
-            //      g_InControlState.BodyPos.x = (command.rightH)/2;
-            //      g_InControlState.BodyPos.z = -(command.rightV)/3;
-            //      g_InControlState.BodyRot1.y = (command.leftH)*2;
-            g_BodyYShift = (-(command.leftV)/2);
+            //      g_InControlState.BodyPos.x = (command.leftH)/2;
+            //      g_InControlState.BodyPos.z = -(command.leftV)/3;
+            //      g_InControlState.BodyRot1.y = (command.rightH)*2;
+            g_BodyYShift = (-(command.rightV)/2);
         }
 
         //[Rotate functions]
         if (ControlMode == ROTATEMODE)
         {
-            g_InControlState.BodyRot1.x = (command.rightV);
-            g_InControlState.BodyRot1.y = (command.leftH)*2;
-            g_InControlState.BodyRot1.z = (command.rightH);
-            g_BodyYShift = (-(command.leftV)/2);
+            g_InControlState.BodyRot1.x = (command.leftV);
+            g_InControlState.BodyRot1.y = (command.rightH)*2;
+            g_InControlState.BodyRot1.z = (command.leftH);
+            g_BodyYShift = (-(command.rightV)/2);
         }
 #ifdef OPT_GPPLAYER
         //[GPPlayer functions]
@@ -412,13 +414,13 @@ void CommanderInputController::ControlInput(void)
             if (g_ServoDriver.FIsGPSeqActive() )
             {
                 if ((g_sGPSMController != 32767)
-                    || (command.leftV > 16) || (command.leftV < -16))
+                    || (command.rightV > 16) || (command.rightV < -16))
                 {
                     // We are in speed modify mode...
-                    if (command.leftV >= 0)
-                        g_sGPSMController = map(command.leftV, 0, 127, 0, 200);
+                    if (command.rightV >= 0)
+                        g_sGPSMController = map(command.rightV, 0, 127, 0, 200);
                     else
-                        g_sGPSMController = map(command.leftV, -127, 0, -200, 0);
+                        g_sGPSMController = map(command.rightV, -127, 0, -200, 0);
                     g_ServoDriver.GPSetSpeedMultiplyer(g_sGPSMController);
                 }
             }
@@ -459,36 +461,8 @@ void CommanderInputController::ControlInput(void)
         }
 #endif                                    // OPT_GPPLAYER
 
-        //[Single leg functions]
-        if (ControlMode == SINGLELEGMODE)
-        {
-            //Switch leg for single leg control
-            if ((command.buttons & BUT_R1) && !(buttonsPrev & BUT_R1))
-            {
-                MSound (1, 50, 2000);
-                if (g_InControlState.SelectedLeg<(CNT_LEGS-1))
-                    g_InControlState.SelectedLeg = g_InControlState.SelectedLeg+1;
-                else
-                    g_InControlState.SelectedLeg=0;
-            }
-
-                                                  //Left Stick Right/Left
-            g_InControlState.SLLeg.x= (byte)((int)command.rightH+128)/2;
-                                                  //Right Stick Up/Down
-            g_InControlState.SLLeg.y= (byte)((int)command.leftV+128)/10;
-                                                  //Left Stick Up/Down
-            g_InControlState.SLLeg.z = (byte)((int)command.rightV+128)/2;
-
-            // Hold single leg in place
-            if ((command.buttons & BUT_RT) && !(buttonsPrev & BUT_RT))
-            {
-                MSound (1, 50, 2000);
-                g_InControlState.fSLHold = !g_InControlState.fSLHold;
-            }
-        }
-
         //Calculate walking time delay
-        g_InControlState.InputTimeDelay = 128 - max(max(abs(command.rightH), abs(command.rightV)), abs(command.leftH));
+        g_InControlState.InputTimeDelay = 128 - max(max(abs(command.leftH), abs(command.leftV)), abs(command.rightH));
 
         //Calculate g_InControlState.BodyPos.y
         g_InControlState.BodyPos.y = max(g_BodyYOffset + g_BodyYShift,  0);
@@ -530,6 +504,5 @@ void CommanderTurnRobotOff(void)
     g_InControlState.TravelLength.y = 0;
     g_BodyYOffset = 0;
     g_BodyYShift = 0;
-    g_InControlState.SelectedLeg = 255;
     g_InControlState.fRobotOn = 0;
 }

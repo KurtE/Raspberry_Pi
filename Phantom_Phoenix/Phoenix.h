@@ -102,7 +102,7 @@ void RotateLegInitAngles (int iDeltaAngle);
 extern boolean g_fDBGHandleError;
 
 #ifdef c4DOF
-extern const byte cTarsLength[] PROGMEM;
+extern const byte cTarsLength[] ;
 #endif
 
 #ifdef OPT_BACKGROUND_PROCESS
@@ -141,6 +141,8 @@ extern SoftwareSerial SSCSerial;
 class InputController {
     public:
         virtual void     Init(void);
+        virtual void     Cleanup(void); // Add a cleanup function;
+
         virtual void     ControlInput(void);
         virtual void     AllowControllerInterrupts(boolean fAllow);
 
@@ -182,7 +184,7 @@ typedef struct _PhoenixGait {
 #endif    
   byte            GaitLegNr[CNT_LEGS]; //Init position of the leg
 #ifdef DISPLAY_GAIT_NAMES
-  PGM_P           pszName;             // The gait name
+  const char *           pszName;             // The gait name
 #endif
 } 
 PHOENIXGAIT;
@@ -307,6 +309,18 @@ private:
 
 } 
 ;   
+
+
+//==============================================================================
+// Define functions for speaking that are optional.
+//==============================================================================
+#ifdef OPT_ESPEAK
+#define SpeakStr(psz) Speak.Speak((psz), true)
+#else
+#define SpeakStr(PSZ)
+#endif
+
+
 
 //==============================================================================
 //==============================================================================
