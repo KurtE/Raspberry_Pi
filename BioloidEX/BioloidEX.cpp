@@ -275,7 +275,7 @@ void *BioloidControllerEx::WorkerThreadProc(void *pv)
     {
         // wait for something to do...
         pthread_mutex_lock(&pbioloid->mutex_);
-        while (!pbioloid->signal_new_pose_) {
+        while (!pbioloid->signal_new_pose_ && !pbioloid->_fCancel) {
             pthread_cond_wait( &pbioloid->cond_, &pbioloid->mutex_ );
         }
         
@@ -328,7 +328,7 @@ void *BioloidControllerEx::WorkerThreadProc(void *pv)
         
         //  Now lets do our interpolation.  
         
-        while (!pbioloid->signal_new_pose_ && servos_still_moving && frames--) {
+        while (!pbioloid->signal_new_pose_ && !pbioloid->_fCancel && servos_still_moving && frames--) {
             // We should delay a frame time now.
             long delay_time = next_frame - millis();
             if (delay_time > 0)
@@ -392,7 +392,20 @@ void BioloidControllerEx::end()
     _fCancel = true;
     
    	// pthread_join to sync
-	pthread_join(tidWorker, NULL);
+    struct timespec ts;
+    int s;
+
+   if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
+                                      /* Handle error */
+   }
+
+   ts.tv_sec += 2;
+
+   s = pthread_timedjoin_np(tidWorker, NULL, &ts);
+   if (s != 0) {
+       /* Handle error */
+       printf("Bioloid Thread join failed: %d\n", s);
+   }
 
 	// destroy barrier
 	pthread_barrier_destroy(&_barrier);
