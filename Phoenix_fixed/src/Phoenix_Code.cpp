@@ -615,6 +615,7 @@ void cleanup(void){
 
     // Additional cleanup?
     g_ServoDriver.Cleanup();
+    g_InputController.Cleanup();
     
     SpeakStr("Abort");
 }
@@ -1407,12 +1408,12 @@ void BalCalcOneLeg (long PosX, long PosZ, long PosY, byte BalLegNr)
     CPR_X = (short)(cOffsetX[BalLegNr]) + PosX;
     CPR_Y = 150 + PosY;                       // using the value 150 to lower the centerpoint of rotation 'g_InControlState.BodyPos.y +
 
-	TotalTransY += (long)PosY;
-	TotalTransZ += (long)CPR_Z;
-	TotalTransX += (long)CPR_X;
+    TotalTransY += (long)PosY;
+    TotalTransZ += (long)CPR_Z;
+    TotalTransX += (long)CPR_X;
 
-	lAtan = GetATan2(CPR_X, CPR_Z);
-	TotalYBal1 += (lAtan*1800) / 31415;
+    lAtan = GetATan2(CPR_X, CPR_Z);
+    TotalYBal1 += (lAtan*1800) / 31415;
 #ifdef DEBUG
       if (g_fDebugOutput) {
           DBGSerial.print(" ");
@@ -1426,14 +1427,14 @@ void BalCalcOneLeg (long PosX, long PosZ, long PosY, byte BalLegNr)
       }    
 #endif
 
-	lAtan = GetATan2 (CPR_X, CPR_Y);
-	TotalZBal1 += ((lAtan*1800) / 31415) -900;//Rotate balance circle 90 deg
+    lAtan = GetATan2 (CPR_X, CPR_Y);
+    TotalZBal1 += ((lAtan*1800) / 31415) -900;//Rotate balance circle 90 deg
 
-	lAtan = GetATan2 (CPR_Z, CPR_Y);
-	TotalXBal1 += ((lAtan*1800) / 31415) - 900;//Rotate balance circle 90 deg
+    lAtan = GetATan2 (CPR_Z, CPR_Y);
+    TotalXBal1 += ((lAtan*1800) / 31415) - 900;//Rotate balance circle 90 deg
 
 #ifdef QUADMODE
-	}
+    }
 #endif
 
 }
@@ -1447,41 +1448,41 @@ void BalanceBody(void)
   if (g_InControlState.gaitCur.COGAngleStep1 == 0) {  // In Quad mode only do those for those who don't support COG Balance...
 #endif
     TotalTransZ = TotalTransZ/BalanceDivFactor ;
-	TotalTransX = TotalTransX/BalanceDivFactor;
-	TotalTransY = TotalTransY/BalanceDivFactor;
+    TotalTransX = TotalTransX/BalanceDivFactor;
+    TotalTransY = TotalTransY/BalanceDivFactor;
 
 #ifndef QUADMODE // ??? on PhantomX Hex at no movment YBal1 = 1800, on Quad = 0...  Need to experiment
-	if (TotalYBal1 > 0)                       //Rotate balance circle by +/- 180 deg
-		TotalYBal1 -=  1800;
-	else
-		TotalYBal1 += 1800;
+    if (TotalYBal1 > 0)                       //Rotate balance circle by +/- 180 deg
+        TotalYBal1 -=  1800;
+    else
+        TotalYBal1 += 1800;
 #endif        
 
       if (TotalZBal1 < -1800)    //Compensate for extreme balance positions that causes overflow
-		TotalZBal1 += 3600;
+        TotalZBal1 += 3600;
 
       if (TotalXBal1 < -1800)    //Compensate for extreme balance positions that causes overflow
-		TotalXBal1 += 3600;
+        TotalXBal1 += 3600;
 
     //Balance rotation
-	TotalYBal1 = -TotalYBal1/BalanceDivFactor;
-	TotalXBal1 = -TotalXBal1/BalanceDivFactor;
-	TotalZBal1 = TotalZBal1/BalanceDivFactor;
+    TotalYBal1 = -TotalYBal1/BalanceDivFactor;
+    TotalXBal1 = -TotalXBal1/BalanceDivFactor;
+    TotalZBal1 = TotalZBal1/BalanceDivFactor;
     #ifdef DEBUG
       if (g_fDebugOutput) {
           DBGSerial.print(" L ");
           DBGSerial.print(BalanceDivFactor, DEC);
           DBGSerial.print(" TTrans: ");
           DBGSerial.print(TotalTransX, DEC);
-		DBGSerial.print(" ");
+        DBGSerial.print(" ");
           DBGSerial.print(TotalTransY, DEC);
-		DBGSerial.print(" ");
+        DBGSerial.print(" ");
           DBGSerial.print(TotalTransZ, DEC);
           DBGSerial.print(" TBal: ");
           DBGSerial.print(TotalXBal1, DEC);
-		DBGSerial.print(" ");
+        DBGSerial.print(" ");
           DBGSerial.print(TotalYBal1, DEC);
-		DBGSerial.print(" ");
+        DBGSerial.print(" ");
           DBGSerial.println(TotalZBal1, DEC);
     }
 #endif
@@ -1514,7 +1515,7 @@ void BalanceBody(void)
 #ifdef DEBUG
         if (g_fDebugOutput) {
           DBGSerial.print(" TotalTransX: ");
-			DBGSerial.print(TotalTransX, DEC);
+            DBGSerial.print(TotalTransX, DEC);
           DBGSerial.print(" TotalTransZ: ");
           DBGSerial.print(TotalTransZ, DEC);
         }
@@ -1535,7 +1536,7 @@ void BalanceBody(void)
           DBGSerial.print(" COGRadius: ");
           DBGSerial.print(g_InControlState.gaitCur.COGRadius, DEC);
           DBGSerial.print(" TotalTransX: ");
-		DBGSerial.print(TotalTransX, DEC);
+        DBGSerial.print(TotalTransX, DEC);
           DBGSerial.print(" TotalTransZ: ");
           DBGSerial.println(TotalTransZ, DEC);
         }
@@ -1553,38 +1554,38 @@ void GetSinCos(short AngleDeg1)
 {
     short        ABSAngleDeg1;                    //Absolute value of the Angle in Degrees, decimals = 1
     //Get the absolute value of AngleDeg
-	if (AngleDeg1 < 0)
+    if (AngleDeg1 < 0)
         ABSAngleDeg1 = AngleDeg1 *-1;
-	else
+    else
         ABSAngleDeg1 = AngleDeg1;
 
     //Shift rotation to a full circle of 360 deg -> AngleDeg // 360
-	if (AngleDeg1 < 0)                        //Negative values
+    if (AngleDeg1 < 0)                        //Negative values
         AngleDeg1 = 3600-(ABSAngleDeg1-(3600*(ABSAngleDeg1/3600)));
-	else                                      //Positive values
+    else                                      //Positive values
         AngleDeg1 = ABSAngleDeg1-(3600*(ABSAngleDeg1/3600));
 
-	if (AngleDeg1>=0 && AngleDeg1<=900)       // 0 to 90 deg
+    if (AngleDeg1>=0 && AngleDeg1<=900)       // 0 to 90 deg
     {
         sin4 = (GetSin[AngleDeg1/5]);             // 5 is the presision (0.5) of the table
-		cos4 = (GetSin[(900-(AngleDeg1))/5]);
+        cos4 = (GetSin[(900-(AngleDeg1))/5]);
     }
 
     else if (AngleDeg1>900 && AngleDeg1<=1800)    // 90 to 180 deg
     {
         sin4 = (GetSin[(900-(AngleDeg1-900))/5]); // 5 is the presision (0.5) of the table
-		cos4 = -(GetSin[(AngleDeg1-900)/5]);
+        cos4 = -(GetSin[(AngleDeg1-900)/5]);
     }
     else if (AngleDeg1>1800 && AngleDeg1<=2700)   // 180 to 270 deg
     {
         sin4 = -(GetSin[(AngleDeg1-1800)/5]);     // 5 is the presision (0.5) of the table
-		cos4 = -(GetSin[(2700-AngleDeg1)/5]);
+        cos4 = -(GetSin[(2700-AngleDeg1)/5]);
     }
 
     else if(AngleDeg1>2700 && AngleDeg1<=3600)    // 270 to 360 deg
     {
         sin4 = -(GetSin[(3600-AngleDeg1)/5]); // 5 is the presision (0.5) of the table
-		cos4 = (GetSin[(AngleDeg1-2700)/5]);
+        cos4 = (GetSin[(AngleDeg1-2700)/5]);
     }
 }
 
@@ -1597,7 +1598,7 @@ long GetArcCos(short cos4)
 {
     boolean NegativeValue/*:1*/;    //If the the value is Negative
     //Check for negative value
-	if (cos4<0)
+    if (cos4<0)
     {
         cos4 = -cos4;
         NegativeValue = 1;
@@ -1606,12 +1607,12 @@ long GetArcCos(short cos4)
         NegativeValue = 0;
 
     //Limit cos4 to his maximal value
-	cos4 = min(cos4,c4DEC);
+    cos4 = min(cos4,c4DEC);
 
-	if ((cos4>=0) && (cos4<9000))
+    if ((cos4>=0) && (cos4<9000))
     {
         AngleRad4 = (byte)(GetACos[cos4/79]);
-		AngleRad4 = ((long)AngleRad4*616)/c1DEC;//616=acos resolution (pi/2/255) ;
+        AngleRad4 = ((long)AngleRad4*616)/c1DEC;//616=acos resolution (pi/2/255) ;
     }
     else if ((cos4>=9000) && (cos4<9900))
     {
@@ -1628,38 +1629,14 @@ long GetArcCos(short cos4)
     if (NegativeValue)
         AngleRad4 = 31416 - AngleRad4;
 
-	return AngleRad4;
+    return AngleRad4;
 }
 
 
 unsigned long isqrt32 (unsigned long n)           //
 {
-#ifdef USE_OUR_CODE
-    unsigned long root;
-	unsigned long remainder;
-	unsigned long  place;
-
-	root = 0;
-	remainder = n;
-	place = 0x40000000;                       // OR place = 0x4000; OR place = 0x40; - respectively
-
-	while (place > remainder)
-	place = place >> 2;
-	while (place)
-    {
-        if (remainder >= root + place)
-        {
-            remainder = remainder - root - place;
-			root = root + (place << 1);
-        }
-        root = root >> 1;
-		place = place >> 2;
-    }
-    return root;
-#else
     // Use built in square root function
     return sqrt(n);
-#endif    
 }
 
 
@@ -1672,13 +1649,13 @@ unsigned long isqrt32 (unsigned long n)           //
 short GetATan2 (short AtanX, short AtanY)
 {
     XYhyp2 = isqrt32(((long)AtanX*AtanX*c4DEC) + ((long)AtanY*AtanY*c4DEC));
-	GetArcCos (((long)AtanX*(long)c6DEC) /(long) XYhyp2);
+    GetArcCos (((long)AtanX*(long)c6DEC) /(long) XYhyp2);
 
-	if (AtanY < 0)                            // removed overhead... Atan4 = AngleRad4 * (AtanY/abs(AtanY));
-		Atan4 = -AngleRad4;
-	else
+    if (AtanY < 0)                            // removed overhead... Atan4 = AngleRad4 * (AtanY/abs(AtanY));
+        Atan4 = -AngleRad4;
+    else
         Atan4 = AngleRad4;
-	return Atan4;
+    return Atan4;
 }
 
 
@@ -1700,32 +1677,32 @@ short GetATan2 (short AtanX, short AtanY)
 void BodyFK (short PosX, short PosZ, short PosY, short RotationY, byte BodyIKLeg)
 {
     short            SinA4;                       //Sin buffer for BodyRotX calculations
-	short            CosA4;                   //Cos buffer for BodyRotX calculations
-	short            SinB4;                   //Sin buffer for BodyRotX calculations
-	short            CosB4;                   //Cos buffer for BodyRotX calculations
-	short            SinG4;                   //Sin buffer for BodyRotZ calculations
-	short            CosG4;                   //Cos buffer for BodyRotZ calculations
-	short             CPR_X;                  //Final X value for centerpoint of rotation
-	short            CPR_Y;                   //Final Y value for centerpoint of rotation
-	short            CPR_Z;                   //Final Z value for centerpoint of rotation
+    short            CosA4;                   //Cos buffer for BodyRotX calculations
+    short            SinB4;                   //Sin buffer for BodyRotX calculations
+    short            CosB4;                   //Cos buffer for BodyRotX calculations
+    short            SinG4;                   //Sin buffer for BodyRotZ calculations
+    short            CosG4;                   //Cos buffer for BodyRotZ calculations
+    short             CPR_X;                  //Final X value for centerpoint of rotation
+    short            CPR_Y;                   //Final Y value for centerpoint of rotation
+    short            CPR_Z;                   //Final Z value for centerpoint of rotation
 
     //Calculating totals from center of the body to the feet
-	CPR_X = (short)(cOffsetX[BodyIKLeg])+PosX + g_InControlState.BodyRotOffset.x;
+    CPR_X = (short)(cOffsetX[BodyIKLeg])+PosX + g_InControlState.BodyRotOffset.x;
     CPR_Y = PosY + g_InControlState.BodyRotOffset.y;         //Define centerpoint for rotation along the Y-axis
-	CPR_Z = (short)(cOffsetZ[BodyIKLeg]) + PosZ + g_InControlState.BodyRotOffset.z;
+    CPR_Z = (short)(cOffsetZ[BodyIKLeg]) + PosZ + g_InControlState.BodyRotOffset.z;
 
     //Successive global rotation matrix:
     //Math shorts for rotation: Alfa [A] = Xrotate, Beta [B] = Zrotate, Gamma [G] = Yrotate
     //Sinus Alfa = SinA, cosinus Alfa = cosA. and so on...
 
     //First calculate sinus and cosinus for each rotation:
-	GetSinCos (g_InControlState.BodyRot1.x+TotalXBal1);
-	SinG4 = sin4;
-	CosG4 = cos4;
+    GetSinCos (g_InControlState.BodyRot1.x+TotalXBal1);
+    SinG4 = sin4;
+    CosG4 = cos4;
 
-	GetSinCos (g_InControlState.BodyRot1.z+TotalZBal1);
-	SinB4 = sin4;
-	CosB4 = cos4;
+    GetSinCos (g_InControlState.BodyRot1.z+TotalZBal1);
+    SinB4 = sin4;
+    CosB4 = cos4;
 
     #ifdef OPT_WALK_UPSIDE_DOWN
     if (g_fRobotUpsideDown)
@@ -1770,19 +1747,19 @@ void LegIK (short IKFeetPosX, short IKFeetPosY, short IKFeetPosZ, byte LegIKLegN
     short            IKFeetPosXZ;             //Diagonal direction from Input X and Z
     #ifdef c4DOF
     // these were shorts...
-	long            TarsOffsetXZ;             //Vector value \ ;
-	long            TarsOffsetY;              //Vector value / The 2 DOF IK calcs (femur and tibia) are based upon these vectors
-	long            TarsToGroundAngle1 = 0;       //Angle between tars and ground. Note: the angle are 0 when the tars are perpendicular to the ground
-	long            TGA_A_H4;
-	long            TGA_B_H3;
-	#else
+    long            TarsOffsetXZ;             //Vector value \ ;
+    long            TarsOffsetY;              //Vector value / The 2 DOF IK calcs (femur and tibia) are based upon these vectors
+    long            TarsToGroundAngle1 = 0;       //Angle between tars and ground. Note: the angle are 0 when the tars are perpendicular to the ground
+    long            TGA_A_H4;
+    long            TGA_B_H3;
+    #else
     #define TarsOffsetXZ 0                        // Vector value
     #define TarsOffsetY  0                        //Vector value / The 2 DOF IK calcs (femur and tibia) are based upon these vectors
     #endif
 
-	long            Temp1;
-	long            Temp2;
-	long            T3;
+    long            Temp1;
+    long            Temp2;
+    long            T3;
 
     //Calculate IKCoxaAngle and IKFeetPosXZ
     GetATan2 (IKFeetPosX, IKFeetPosZ);
@@ -1799,29 +1776,29 @@ void LegIK (short IKFeetPosX, short IKFeetPosY, short IKFeetPosZ, byte LegIKLegN
             TarsToGroundAngle1 = TarsToGroundAngle1 - ((long)(IKFeetPosY*cTarsFactorC)/c1DEC);     //TGA base, overall rule
         if (TarsToGroundAngle1 > 400)
             TGA_B_H3 = 200 + (TarsToGroundAngle1/2);
-		else
+        else
             TGA_B_H3 = TarsToGroundAngle1;
 
-		if (TarsToGroundAngle1 > 300)
+        if (TarsToGroundAngle1 > 300)
             TGA_A_H4 = 240 + (TarsToGroundAngle1/5);
-		else
+        else
             TGA_A_H4 = TarsToGroundAngle1;
 
-		if (IKFeetPosY > 0)                   //Only compensate the TarsToGroundAngle1 when it exceed 30 deg (A, H4 PEP note)
+        if (IKFeetPosY > 0)                   //Only compensate the TarsToGroundAngle1 when it exceed 30 deg (A, H4 PEP note)
             TarsToGroundAngle1 = TGA_A_H4;
         else if (((IKFeetPosY <= 0) & (IKFeetPosY > -10))) // linear transition between case H3 and H4 (from PEP: H4-K5*(H3-H4))
             TarsToGroundAngle1 = (TGA_A_H4 -(((long)IKFeetPosY*(TGA_B_H3-TGA_A_H4))/c1DEC));
-		else                                  //IKFeetPosY <= -10, Only compensate TGA1 when it exceed 40 deg
+        else                                  //IKFeetPosY <= -10, Only compensate TGA1 when it exceed 40 deg
             TarsToGroundAngle1 = TGA_B_H3;
 
         //Calc Tars Offsets:
-		GetSinCos(TarsToGroundAngle1);
-		TarsOffsetXZ = ((long)sin4*(byte)(cTarsLength[LegIKLegNr]))/c4DEC;
-		TarsOffsetY = ((long)cos4*(byte)(cTarsLength[LegIKLegNr]))/c4DEC;
+        GetSinCos(TarsToGroundAngle1);
+        TarsOffsetXZ = ((long)sin4*(byte)(cTarsLength[LegIKLegNr]))/c4DEC;
+        TarsOffsetY = ((long)cos4*(byte)(cTarsLength[LegIKLegNr]))/c4DEC;
     }
     else {
         TarsOffsetXZ = 0;
-		TarsOffsetY = 0;
+        TarsOffsetY = 0;
     }
 #endif
 
@@ -1830,13 +1807,13 @@ void LegIK (short IKFeetPosX, short IKFeetPosY, short IKFeetPosZ, byte LegIKLegN
     IKA14 = GetATan2 (IKFeetPosY-TarsOffsetY, IKFeetPosXZ-(byte)(cCoxaLength[LegIKLegNr])-TarsOffsetXZ);
 
     //IKSW2 - Length between femur axis and tars
-	IKSW2 = XYhyp2;
+    IKSW2 = XYhyp2;
 
     //IKA2 - Angle of the line S>W with respect to the femur in radians
-	Temp1 = ((((long)(byte)(cFemurLength[LegIKLegNr])*(byte)(cFemurLength[LegIKLegNr])) - ((long)(byte)(cTibiaLength[LegIKLegNr])*(byte)(cTibiaLength[LegIKLegNr])))*c4DEC + ((long)IKSW2*IKSW2));
-	Temp2 = (long)(2*(byte)(cFemurLength[LegIKLegNr]))*c2DEC * (unsigned long)IKSW2;
-	T3 = Temp1 / (Temp2/c4DEC);
-	IKA24 = GetArcCos (T3 );
+    Temp1 = ((((long)(byte)(cFemurLength[LegIKLegNr])*(byte)(cFemurLength[LegIKLegNr])) - ((long)(byte)(cTibiaLength[LegIKLegNr])*(byte)(cTibiaLength[LegIKLegNr])))*c4DEC + ((long)IKSW2*IKSW2));
+    Temp2 = (long)(2*(byte)(cFemurLength[LegIKLegNr]))*c2DEC * (unsigned long)IKSW2;
+    T3 = Temp1 / (Temp2/c4DEC);
+    IKA24 = GetArcCos (T3 );
 #ifdef DEBUG_IK
     if (g_fDebugOutput && g_InControlState.fRobotOn) {
         DBGSerial.print(" ");
@@ -1855,18 +1832,18 @@ void LegIK (short IKFeetPosX, short IKFeetPosY, short IKFeetPosZ, byte LegIKLegN
 #endif
     //IKFemurAngle
     #ifdef OPT_WALK_UPSIDE_DOWN
-	if (g_fRobotUpsideDown)
+    if (g_fRobotUpsideDown)
         FemurAngle1[LegIKLegNr] = (long)(IKA14 + IKA24) * 180 / 3141 - 900 + CFEMURHORNOFFSET1(LegIKLegNr);//Inverted, up side down
-	else
+    else
         FemurAngle1[LegIKLegNr] = -(long)(IKA14 + IKA24) * 180 / 3141 + 900 + CFEMURHORNOFFSET1(LegIKLegNr);//Normal
 #else
     FemurAngle1[LegIKLegNr] = -(long)(IKA14 + IKA24) * 180 / 3141 + 900 + CFEMURHORNOFFSET1(LegIKLegNr);//Normal
 #endif
 
     //IKTibiaAngle
-	Temp1 = ((((long)(byte)(cFemurLength[LegIKLegNr])*(byte)(cFemurLength[LegIKLegNr])) + ((long)(byte)(cTibiaLength[LegIKLegNr])*(byte)(cTibiaLength[LegIKLegNr])))*c4DEC - ((long)IKSW2*IKSW2));
+    Temp1 = ((((long)(byte)(cFemurLength[LegIKLegNr])*(byte)(cFemurLength[LegIKLegNr])) + ((long)(byte)(cTibiaLength[LegIKLegNr])*(byte)(cTibiaLength[LegIKLegNr])))*c4DEC - ((long)IKSW2*IKSW2));
     Temp2 = 2 * ((long)((byte)(cFemurLength[LegIKLegNr]))) * (long)((byte)(cTibiaLength[LegIKLegNr]));
-	GetArcCos (Temp1 / Temp2);
+    GetArcCos (Temp1 / Temp2);
 #ifdef DEBUG_IK
     if (g_fDebugOutput && g_InControlState.fRobotOn) {
         DBGSerial.print("=");
@@ -1879,9 +1856,9 @@ void LegIK (short IKFeetPosX, short IKFeetPosY, short IKFeetPosZ, byte LegIKLegN
 #endif
     
     #ifdef OPT_WALK_UPSIDE_DOWN
-	if (g_fRobotUpsideDown)
+    if (g_fRobotUpsideDown)
         TibiaAngle1[LegIKLegNr] = (1800-(long)AngleRad4*180/3141 + CTIBIAHORNOFFSET1(LegIKLegNr));//Full range tibia, wrong side (up side down)
-	else
+    else
         TibiaAngle1[LegIKLegNr] = -(1800-(long)AngleRad4*180/3141 + CTIBIAHORNOFFSET1(LegIKLegNr));//Full range tibia, right side (up side up)
     #else
 #ifdef PHANTOMX_V2     // BugBug:: cleaner way?  
@@ -1902,11 +1879,11 @@ void LegIK (short IKFeetPosX, short IKFeetPosY, short IKFeetPosZ, byte LegIKLegN
     //Set the Solution quality
     if(IKSW2 < ((word)((byte)(cFemurLength[LegIKLegNr])+(byte)(cTibiaLength[LegIKLegNr])-30)*c2DEC))
         IKSolution = 1;
-	else
+    else
     {
         if(IKSW2 < ((word)((byte)(cFemurLength[LegIKLegNr])+(byte)(cTibiaLength[LegIKLegNr]))*c2DEC))
             IKSolutionWarning = 1;
-		else
+        else
             IKSolutionError = 1    ;
     }
 #ifdef DEBUG
@@ -1998,10 +1975,10 @@ short SmoothControl (short CtrlMoveInp, short CtrlMoveOut, byte CtrlDivider)
 
     if (CtrlMoveOut < (CtrlMoveInp - 4))
         return CtrlMoveOut + abs((CtrlMoveOut - CtrlMoveInp)/CtrlDivider);
-	else if (CtrlMoveOut > (CtrlMoveInp + 4))
+    else if (CtrlMoveOut > (CtrlMoveInp + 4))
         return CtrlMoveOut - abs((CtrlMoveOut - CtrlMoveInp)/CtrlDivider);
 
-	return CtrlMoveInp;
+    return CtrlMoveInp;
 }
 
 
@@ -2032,7 +2009,7 @@ word GetLegsXZLength(void)
 #endif
 
 void AdjustLegPositions(word XZLength1) 
-        {
+{
         //now lets see what happens when we change the leg positions...
     if (XZLength1 > MAX_XZ_LEG_ADJUST)
         XZLength1 = MAX_XZ_LEG_ADJUST;
@@ -2046,45 +2023,46 @@ void AdjustLegPositions(word XZLength1)
     g_wLegsXZLength = XZLength1;
     
         
-    for (uint8_t LegIndex = 0; LegIndex < CNT_LEGS; LegIndex++) {
+    for (uint8_t LegIndex = 0; LegIndex < CNT_LEGS; LegIndex++) 
+    {
 #ifdef DEBUG
-          if (g_fDebugOutput) {
+        if (g_fDebugOutput) {
                 DBGSerial.print("(");
-				DBGSerial.print(LegPosX[LegIndex], DEC);
-				DBGSerial.print(",");
-				DBGSerial.print(LegPosZ[LegIndex], DEC);
-				DBGSerial.print(")->");
-            }
+                DBGSerial.print(LegPosX[LegIndex], DEC);
+                DBGSerial.print(",");
+                DBGSerial.print(LegPosZ[LegIndex], DEC);
+                DBGSerial.print(")->");
+        }
 #endif
 #ifdef ADJUSTABLE_LEG_ANGLES
-      GetSinCos(g_InControlState.aCoxaInitAngle1[LegIndex]);
+        GetSinCos(g_InControlState.aCoxaInitAngle1[LegIndex]);
 #else
 #ifdef cRRInitCoxaAngle1    // We can set different angles for the legs than just where they servo horns are set...
-      GetSinCos((short)(cCoxaInitAngle1[LegIndex]));
+        GetSinCos((short)(cCoxaInitAngle1[LegIndex]));
 #else
-            GetSinCos((short)(cCoxaAngle1[LegIndex]));
+        GetSinCos((short)(cCoxaAngle1[LegIndex]));
 #endif
 #endif      
-      LegPosX[LegIndex] = ((long)((long)cos4 * XZLength1))/c4DEC;  //Set start positions for each leg
+        LegPosX[LegIndex] = ((long)((long)cos4 * XZLength1))/c4DEC;  //Set start positions for each leg
                 LegPosZ[LegIndex] = -((long)((long)sin4 * XZLength1))/c4DEC;
     #ifdef DEBUG
-      if (g_fDebugOutput) {
+        if (g_fDebugOutput) {
                 DBGSerial.print("(");
-				DBGSerial.print(LegPosX[LegIndex], DEC);
-				DBGSerial.print(",");
-				DBGSerial.print(LegPosZ[LegIndex], DEC);
-				DBGSerial.print(") ");
-            }
-#endif
+                DBGSerial.print(LegPosX[LegIndex], DEC);
+                DBGSerial.print(",");
+                DBGSerial.print(LegPosZ[LegIndex], DEC);
+                DBGSerial.print(") ");
         }
+#endif
+    }
 #ifdef DEBUG
     if (g_fDebugOutput) {
             DBGSerial.println("");
         }
 #endif
-        // Make sure we cycle through one gait to have the legs all move into their new locations...
+    // Make sure we cycle through one gait to have the legs all move into their new locations...
     g_InControlState.ForceGaitStepCnt = g_InControlState.gaitCur.StepsInGait;
-    }
+}
 
 //--------------------------------------------------------------------
 // ResetLegInitAngles - This is used when we allow the user to 
@@ -2094,19 +2072,20 @@ void AdjustLegPositions(word XZLength1)
 void ResetLegInitAngles(void)
 {
 #ifdef ADJUSTABLE_LEG_ANGLES
-    for (int LegIndex=0; LegIndex < CNT_LEGS; LegIndex++) {
+    for (int LegIndex=0; LegIndex < CNT_LEGS; LegIndex++) 
+    {
 #ifdef cRRInitCoxaAngle1    // We can set different angles for the legs than just where they servo horns are set...
-            g_InControlState.aCoxaInitAngle1[LegIndex] = (short)(cCoxaInitAngle1[LegIndex]);
+        g_InControlState.aCoxaInitAngle1[LegIndex] = (short)(cCoxaInitAngle1[LegIndex]);
 #else
-            g_InControlState.aCoxaInitAngle1[LegIndex] = (short)(cCoxaAngle1[LegIndex]);
+        g_InControlState.aCoxaInitAngle1[LegIndex] = (short)(cCoxaAngle1[LegIndex]);
 #endif
-}
+    }
     g_wLegsXZLength = 0xffff;
 #endif      
 }
 
 //--------------------------------------------------------------------
-// ResetLegInitAngles - This is used when we allow the user to 
+// RotateLegInitAngles -  This allows us to rotate some of the legs 
 //--------------------------------------------------------------------
 void RotateLegInitAngles (int iDeltaAngle)
 {
@@ -2136,6 +2115,7 @@ void RotateLegInitAngles (int iDeltaAngle)
 //--------------------------------------------------------------------
 
 uint8_t g_iLegInitIndex = 0x00;    // remember which index we are currently using...
+
 
 void AdjustLegPositionsToBodyHeight()
 {
@@ -2211,8 +2191,8 @@ extern void UpdateGaitCmd(byte *pszCmdLine);
 boolean TerminalMonitor(void)
 {
     byte szCmdLine[20];                           // currently pretty simple command lines...
-	byte ich;
-	int ch;
+    byte ich;
+    int ch;
     // See if we need to output a prompt.
     if (g_fShowDebugPrompt)
     {
@@ -2240,25 +2220,25 @@ boolean TerminalMonitor(void)
         {
             ch = DBGSerial.read();                // get the next character
             if ((ch == -1) || ((ch >= 10) && (ch <= 15)))
-				break;
+                break;
             szCmdLine[ich] = ch;
         }
         szCmdLine[ich] = '\0';                    // go ahead and null terminate it...
-		DBGSerial.print("Serial Cmd Line:");
-		DBGSerial.write(szCmdLine, ich);
-		DBGSerial.println("<eol>");
+        DBGSerial.print("Serial Cmd Line:");
+        DBGSerial.write(szCmdLine, ich);
+        DBGSerial.println("<eol>");
 
         // So see what are command is.
-		if (ich == 0)
+        if (ich == 0)
         {
             g_fShowDebugPrompt = true;
         }
         else if ((ich == 1) && ((szCmdLine[0] == 'd') || (szCmdLine[0] == 'D')))
         {
             g_fDebugOutput = !g_fDebugOutput;
-			if (g_fDebugOutput)
-				DBGSerial.println("Debug is on");
-			else
+            if (g_fDebugOutput)
+                DBGSerial.println("Debug is on");
+            else
                 DBGSerial.println("Debug is off");
         }
 #ifdef OPT_DUMP_EEPROM
@@ -2294,31 +2274,31 @@ byte g_bEEPromDumpCnt = 16;                       // how much to dump at a time
 void DumpEEPROM()
 {
     byte i;
-	word wDumpCnt = g_bEEPromDumpCnt;
+    word wDumpCnt = g_bEEPromDumpCnt;
 
-	while (wDumpCnt)
+    while (wDumpCnt)
     {
         DBGSerial.print(g_wEEPromDumpStart, HEX);
-		DBGSerial.print(" - ");
+        DBGSerial.print(" - ");
 
         // First in Hex
-		for (i = 0; (i < 16) && (i < wDumpCnt); i ++)
+        for (i = 0; (i < 16) && (i < wDumpCnt); i ++)
         {
             byte b;
-			b = EEPROM.read(g_wEEPromDumpStart+i);
-			DBGSerial.print(b, HEX);
-			DBGSerial.print(" ");
+            b = EEPROM.read(g_wEEPromDumpStart+i);
+            DBGSerial.print(b, HEX);
+            DBGSerial.print(" ");
         }
         // Next in Ascii
         DBGSerial.print(" : ");
         for (i = 0; (i < 16) && (i < wDumpCnt); i ++)
         {
             byte b;
-			b = EEPROM.read(g_wEEPromDumpStart+i);
-			if ((b > 0x1f) && (b < 0x7f))
-				DBGSerial.write(b);
-			else
-				DBGSerial.print(".");
+            b = EEPROM.read(g_wEEPromDumpStart+i);
+            if ((b > 0x1f) && (b < 0x7f))
+                DBGSerial.write(b);
+            else
+                DBGSerial.print(".");
         }
         DBGSerial.println("");
         g_wEEPromDumpStart += i;              // how many bytes we output
@@ -2398,11 +2378,11 @@ void DumpEEPROMCmd(byte *pszCmdLine)
             while (*psz)
             {
                 w = GetCmdLineNum(&psz);
-				if (psz == pszCmdLine)
+                if (psz == pszCmdLine)
                     break;                        // not valid stuff so bail!
-				pszCmdLine = psz;                 // remember how far we got...
+                pszCmdLine = psz;                 // remember how far we got...
 
-				EEPROM.write(g_wEEPromDumpStart++, w & 0xff);
+                EEPROM.write(g_wEEPromDumpStart++, w & 0xff);
             }
         }
         else
@@ -2426,15 +2406,15 @@ void UpdateGaitCmd(byte *pszCmdLine) {
   if (!*++pszCmdLine) {  // Need to get past the command letter first...
         DBGSerial.print("St: ");
     DBGSerial.print(g_InControlState.gaitCur.StepsInGait, DEC);
-		DBGSerial.print(" ");
+        DBGSerial.print(" ");
     DBGSerial.print(g_InControlState.gaitCur.NrLiftedPos, DEC);
-		DBGSerial.print(" ");
+        DBGSerial.print(" ");
     DBGSerial.print(g_InControlState.gaitCur.GaitLegNr[cRR], DEC);
-		DBGSerial.print(" ");
+        DBGSerial.print(" ");
     DBGSerial.print(g_InControlState.gaitCur.GaitLegNr[cRF], DEC);
-		DBGSerial.print(" ");
+        DBGSerial.print(" ");
     DBGSerial.print(g_InControlState.gaitCur.GaitLegNr[cLR], DEC);
-		DBGSerial.print(" ");
+        DBGSerial.print(" ");
     DBGSerial.println(g_InControlState.gaitCur.GaitLegNr[cLF], DEC);
     }
   else {

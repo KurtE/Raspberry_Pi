@@ -199,6 +199,14 @@ void CommanderInputController::Init(void)
 
 
 //==============================================================================
+// Cleanup - Allows us to cleanup at the end
+//==============================================================================
+void CommanderInputController::Cleanup(void)
+{
+}
+
+
+//==============================================================================
 // This function is called by the main code to tell us when it is about to
 // do a lot of bit-bang outputs and it would like us to minimize any interrupts
 // that we do while it is active...

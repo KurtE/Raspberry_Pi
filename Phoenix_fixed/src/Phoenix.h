@@ -141,6 +141,8 @@ extern SoftwareSerial SSCSerial;
 class InputController {
     public:
         virtual void     Init(void);
+        virtual void     Cleanup(void); // Add a cleanup function;
+
         virtual void     ControlInput(void);
         virtual void     AllowControllerInterrupts(boolean fAllow);
 
