@@ -203,6 +203,7 @@ void CommanderInputController::Init(void)
 //==============================================================================
 void CommanderInputController::Cleanup(void)
 {
+    command.end();
 }
 
 
