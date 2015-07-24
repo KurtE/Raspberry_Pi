@@ -109,6 +109,7 @@ void *LinuxJoy::JoystickThreadProc(void *pv)
     timeval tv;                                   // how long to wait.
     int joy_fd = -1;                              // File descriptor 
     bool error_reported = false;    
+    int count_messages_to_ignore = 0;             // How many messages should we ignore
 
     const uint8_t*  ptol_button_mapping = NULL;    // is there any button mappings?
     AXIS_BUTTON_MAP const * axis_button_map = NULL;
@@ -117,7 +118,7 @@ void *LinuxJoy::JoystickThreadProc(void *pv)
 
     printf("Thread start(%s)\n", pljoy->input_device_name_);
 
-    int ret;
+    int ret = 0;
     struct js_event js;
     int iIndex = 0; // index into which byte we should start reading into of the joystick stuff...
 
@@ -170,11 +171,10 @@ void *LinuxJoy::JoystickThreadProc(void *pv)
                     printf("Unknown\n");
                 }    
 
-
-
                 fcntl( joy_fd, F_SETFL , O_NONBLOCK ); // use non - blocking methods
                 error_reported = false;                 // if we lose the device... 
                 pljoy->data_valid_ = true;                     // let system know we are valid... 
+                count_messages_to_ignore = pljoy->num_of_axis_ + pljoy->num_of_buttons_;    // sends us some initial messages
             }
             else
             {
@@ -205,72 +205,109 @@ void *LinuxJoy::JoystickThreadProc(void *pv)
                     iIndex += ret; // see how many bytes we have of the js event...
                     if (iIndex == sizeof(js)) 
                     {
-                        pthread_mutex_lock(&pljoy->lock_);  // make sure we keep things consistent...
-                        switch(js.type & ~ JS_EVENT_INIT)
+                        // When joystick object is first opened it sends us a set of initial values.
+                        // Sometimes the inital axis are bogus -32767 so best to ignore. 
+                        if (count_messages_to_ignore == 0)
                         {
-                            case JS_EVENT_AXIS :
-                                pljoy->thread_axis_ [ js.number ] = js.value;
-                                if (pljoy->print_level_ & 2)
-                                    printf("A %d : %d\n", js.number, js.value);
-                                    
-                                if (axis_button_map)
-                                {
-                                    AXIS_BUTTON_MAP const * abm = axis_button_map;
-                                    while (abm->map_axis != 0xff)
+                            pthread_mutex_lock(&pljoy->lock_);  // make sure we keep things consistent...
+                            switch(js.type & ~ JS_EVENT_INIT)
+                            {
+                                case JS_EVENT_AXIS :
+                                    pljoy->thread_axis_ [ js.number ] = js.value;
+                                    if (pljoy->print_level_ & 2)
+                                        printf("A %d : %d\n", js.number, js.value);
+                                        
+                                    if (axis_button_map)
                                     {
-                                        if (abm->map_axis == js.number)
+                                        AXIS_BUTTON_MAP const * abm = axis_button_map;
+                                        while (abm->map_axis != 0xff)
                                         {
-                                            // Axis changed that has logical buttons associated.
-                                            if (js.value > 0)
+                                            if (abm->map_axis == js.number)
                                             {
-                                                if (pljoy->print_level_ & 1)
-                                                    printf("AB %d : 1\n", abm->map_button_positive);
-                                                pljoy->thread_buttons_ |= (1 << abm->map_button_positive);
+                                                // Axis changed that has logical buttons associated.
+                                                if (js.value > 0)
+                                                {
+                                                    if (pljoy->print_level_ & 1)
+                                                        printf("AB %d : 1\n", abm->map_button_positive);
+                                                    pljoy->thread_buttons_ |= (1 << abm->map_button_positive);
+                                                }
+                                                else if (js.value < 0)
+                                                {
+                                                    if (pljoy->print_level_ & 1)
+                                                        printf("AB %d : 1\n", abm->map_button_negative);
+                                                    pljoy->thread_buttons_ |= (1 << abm->map_button_negative);
+                                                }
+                                                else
+                                                {
+                                                    if (pljoy->print_level_ & 1)
+                                                        printf("AB %d %d: 0\n", abm->map_button_positive,
+                                                                abm->map_button_negative);
+                                                    pljoy->thread_buttons_ &= ~(1 << abm->map_button_positive);
+                                                    pljoy->thread_buttons_ &= ~(1 << abm->map_button_negative);
+                                                }
+                                                break;
                                             }
-                                            else if (js.value < 0)
-                                            {
-                                                if (pljoy->print_level_ & 1)
-                                                    printf("AB %d : 1\n", abm->map_button_negative);
-                                                pljoy->thread_buttons_ |= (1 << abm->map_button_negative);
-                                            }
-                                            else
-                                            {
-                                                if (pljoy->print_level_ & 1)
-                                                    printf("AB %d %d: 0\n", abm->map_button_positive,
-                                                            abm->map_button_negative);
-                                                pljoy->thread_buttons_ &= ~(1 << abm->map_button_positive);
-                                                pljoy->thread_buttons_ &= ~(1 << abm->map_button_negative);
-                                            }
-                                            break;
-                                        }
-                                        abm++;  // point to next ne
-                                    }    
-                                }
-                                break;
-                            
-                            case JS_EVENT_BUTTON :
-                                // Do logical button mapping if appropriate. 
-                                int log_button = (ptol_button_mapping)? ptol_button_mapping[js.number] : 
-                                        js.number;
-                                if (pljoy->print_level_ & 1)
-                                    printf("B %d %d: %d\n", js.number, log_button, js.value);
-                                    
-                                if (js.value) 
-                                    pljoy->thread_buttons_ |= (1 << log_button);
-                                else 
-                                    pljoy->thread_buttons_ &= ~(1 << log_button);
+                                            abm++;  // point to next ne
+                                        }    
+                                    }
+                                    break;
+                                
+                                case JS_EVENT_BUTTON :
+                                    // Do logical button mapping if appropriate. 
+                                    int log_button = (ptol_button_mapping)? ptol_button_mapping[js.number] : 
+                                            js.number;
+                                    if (pljoy->print_level_ & 1)
+                                        printf("B %d %d: %d\n", js.number, log_button, js.value);
+                                        
+                                    if (js.value) 
+                                        pljoy->thread_buttons_ |= (1 << log_button);
+                                    else 
+                                        pljoy->thread_buttons_ &= ~(1 << log_button);
+                            }
+                            pljoy->data_changed_ = true;
+                            pthread_mutex_unlock(&pljoy->lock_);
                         }
-                        pljoy->data_changed_ = true;
-                        pthread_mutex_unlock(&pljoy->lock_);
+                        else
+                        {
+                            count_messages_to_ignore--; 
+                            //printf("Ignore %c %d: %d\n", ((js.type & ~ JS_EVENT_INIT) == JS_EVENT_AXIS)? 'A' : 'B', js.number, js.value);
+                        }
+
                         iIndex = 0;         // start over reading from start of data...
+                        
                     }
                 }
+                
+                if ((ret < 0) && (errno != EAGAIN))
+                {
+                   printf("Error reading from Joystick %d\n", errno);
+                    // lets free the memory we allocated for old joystick...
+                    pthread_mutex_lock(&pljoy->lock_);  // make sure we keep things consistent...
+                    free (pljoy->thread_axis_);
+                    pljoy->thread_axis_ = NULL;     // and zero it out                    
+                    free (pljoy->axis_values_);
+                    pljoy->axis_values_ = NULL;
+                    pljoy->thread_buttons_  = 0;    // clear out all button states
+                    pljoy->data_changed_ = false;
+                    pljoy->data_valid_ = false; 
+                    pthread_mutex_unlock(&pljoy->lock_);
+                    
+                    // And close off the file
+                    close(joy_fd);
+                    joy_fd = -1;
+                }   
             }
             // If we get to here try sleeping for a little time
             //usleep(1000);                                 // Note: we could maybe simply block the thread until input available!
         }
     }
-    close (joy_fd);
+    if (joy_fd != -1)
+    {
+        // release anything that we allocated. 
+        close (joy_fd);
+        free (pljoy->thread_axis_);
+        free (pljoy->axis_values_);
+    }
     printf("LinuxJoy - LinuxJoy thread exit\n");
     return 0;
 }

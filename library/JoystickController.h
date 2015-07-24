@@ -106,7 +106,8 @@ class LinuxJoy
         bool begin(char *pszComm);
         void end();                              // release any resources.
         int  readMsgs();                         // must be called regularly to clean out Serial buffer
-        void setRepeatDelay(int repeat_delay_ms) { repeat_delay_ms_ = repeat_delay_ms;};       // how long before allowing messages to repeat...
+        void setRepeatDelay(unsigned int repeat_delay_ms) { repeat_delay_ms_ = repeat_delay_ms;};       // how long before allowing messages to repeat...
+        bool connected() { return data_valid_ ;};   // Do we have an active joystick 
 
         // methods for returning button states
         uint32_t buttons()  {return button_values_;}; // return state of all buttons; 
@@ -140,7 +141,7 @@ class LinuxJoy
         uint32_t            button_values_;          // Current button values;
         uint32_t            previous_button_values_; // The previous button values. 
         
-        int                 repeat_delay_ms_;        // What is our delay speed. 
+        unsigned int        repeat_delay_ms_;        // What is our delay speed. 
         unsigned long       last_message_time_;      // when did we last return a message?
         //Private stuff for Linux threading and file descriptor, and open file...
         pthread_mutex_t     lock_;                   // A lock to make sure we don't walk over ourself...
