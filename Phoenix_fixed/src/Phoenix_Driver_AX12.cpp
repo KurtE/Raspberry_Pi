@@ -136,11 +136,57 @@ extern void DoPyPose(byte *psz);
 //Init
 //--------------------------------------------------------------------
 void ServoDriver::Init(void) {
-  // First lets get the actual servo positions for all of our servos...
-  g_fServosFree = true;
-  bioloid.poseSize(NUMSERVOS);  // Method in this version
-  
-  bioloid.readPose();
+    // First lets get the actual servo positions for all of our servos...
+    g_fServosFree = true;
+
+    // We will duplicate and expand on the functionality of the bioloid readPose,
+    // function.  In our loop we will set the IDs to that of our table, so they
+    // will be in the same order.  Plus we will verify we have all of the servos
+    // If we care configured such that none of the servos in our loop have id #1 and
+    // we find that servo #1 and only one other is not found, we will assume that
+    // servo did the renumber to 1 problem and we will renumber it to the missing one.
+    // But again only if 1 servo is missing. 
+    // Note:  We are not saving the read positions, but the make sure servos are on will...
+    bioloid.poseSize(NUMSERVOS);  // Method in this version
+    uint16_t w;
+    int     count_missing = 0;
+    int     missing_servo = -1;
+    bool    servo_1_in_table = false;
+    
+    for (int i = 0; i < NUMSERVOS; i++) {
+        // Set the id
+        bioloid.setId(i, cPinTable[i]);
+        
+        if (cPinTable[i] == 1)
+            servo_1_in_table = true;
+
+        // Now try to get it's position
+        w = ax12GetRegister(cPinTable[i], AX_PRESENT_POSITION_L, 2);
+        if (w == 0xffff) {
+            // Try a second time to make sure. 
+            delay(25);   
+            w = ax12GetRegister(cPinTable[i], AX_PRESENT_POSITION_L, 2);
+            if (w == 0xffff) {
+                // We have a failure
+                printf("Servo(%d): %d not found", i, cPinTable[i]);
+                if (++count_missing == 1)
+                    missing_servo = cPinTable[i];
+            }        
+        }
+        delay(25);   
+    }
+    
+    // Now see if we should try to recover from a potential servo that renumbered itself back to 1.
+    if (count_missing)
+        printf("ERROR: Servo driver init: %d servos missing\n", count_missing);
+        
+    if ((count_missing == 1) && !servo_1_in_table) {
+        if (dxl_read_word(1, AX_PRESENT_POSITION_L) != 0xffff) {
+            printf("Servo recovery: Servo 1 found - setting id to %d\n",  missing_servo);
+            dxl_write_byte(1, AX_ID, missing_servo);
+        }
+    }
+
 #ifdef USB2AX_REG_VOLTAGE
   ax12SetRegister(AX_ID_DEVICE, USB2AX_REG_VOLTAGE, cPinTable[FIRSTFEMURPIN]);
 #endif
@@ -150,13 +196,6 @@ void ServoDriver::Init(void) {
   _fGPEnabled = true;    // assume we support it.
 #endif
 
-  // Currently have Turret pins not necessarily same as numerical order so
-  // Maybe should do for all pins and then set the positions by index instead
-  // of having it do a simple search on each pin...
-#ifdef cTurretRotPin
-  bioloid.setId(FIRSTTURRETPIN, cTurretRotPin);
-  bioloid.setId(FIRSTTURRETPIN+1, cTurretTiltPin);
-#endif
 }
 
 //--------------------------------------------------------------------
@@ -170,8 +209,8 @@ void ServoDriver::Cleanup(void) {
 #endif
     // Turn off all of the servo LEDS...  Maybe use broadcast?
     for (int iServo=0; iServo < NUMSERVOS; iServo++) {
-		dxl_write_byte((cPinTable[iServo]), AX_LED, 0);
-		dxl_get_result();   // don't care for now
+        dxl_write_byte((cPinTable[iServo]), AX_LED, 0);
+        dxl_get_result();   // don't care for now
     }
 
 }
@@ -343,12 +382,12 @@ void ServoDriver::OutputServoInfoForLeg(byte LegIndex, short sCoxaAngle1, short 
     }
     else {    
       // With new library we set by Index.  Note Index defaults to servoID - 1
-      bioloid.setNextPoseByIndex((cPinTable[FIRSTCOXAPIN+LegIndex])-1, wCoxaSDV);
-      bioloid.setNextPoseByIndex((cPinTable[FIRSTFEMURPIN+LegIndex])-1, wFemurSDV);
-      bioloid.setNextPoseByIndex((cPinTable[FIRSTTIBIAPIN+LegIndex])-1, wTibiaSDV);
+      bioloid.setNextPoseByIndex(FIRSTCOXAPIN+LegIndex, wCoxaSDV);
+      bioloid.setNextPoseByIndex(FIRSTFEMURPIN+LegIndex, wFemurSDV);
+      bioloid.setNextPoseByIndex(FIRSTTIBIAPIN+LegIndex, wTibiaSDV);
 #ifdef c4DOF
       if ((byte)(cTarsLength[LegIndex]))   // We allow mix of 3 and 4 DOF legs...
-        bioloid.setNextPoseByIndex((cPinTable[FIRSTTARSPIN+LegIndex])-1, wTarsSDV);
+        bioloid.setNextPoseByIndex(FIRSTTARSPIN+LegIndex, wTarsSDV);
 #endif
     }
   }
@@ -434,7 +473,6 @@ void ServoDriver::OutputServoInfoForTurret(short sRotateAngle1, short sTiltAngle
 #endif
     }
     else {    
-      bioloid.setNextPoseByIndex(FIRSTTURRETPIN, wRotateSDV);
       bioloid.setNextPoseByIndex(FIRSTTURRETPIN, wRotateSDV);
       bioloid.setNextPoseByIndex(FIRSTTURRETPIN+1, wTiltSDV);
     }
@@ -593,7 +631,13 @@ boolean ServoDriver::ProcessTerminalCommand(byte *psz, byte bLen)
       w = ax12GetRegister(cPinTable[i],AX_PRESENT_POSITION_L, 2);
       DBGSerial.print(cPinTable[i],DEC);
       DBGSerial.print("=");
-      DBGSerial.println(w, DEC);
+      DBGSerial.print(w, DEC);
+      if (w == 0xffff) {
+        DBGSerial.print(" retry: ");
+        w = ax12GetRegister(cPinTable[i],AX_PRESENT_POSITION_L, 2);
+        DBGSerial.print(w, DEC);
+      }
+      DBGSerial.println();
       delay(50);   
     }
   }

@@ -637,13 +637,14 @@ void setup()
     printf("%d %d %d\n", __flbf(stdout), __fbufsize(stdout), __flbf(stdin));
     InitVoice();                                 // Lets try to initialize voices if needed.
 
-    // Init our ServoDriver
-    g_ServoDriver.Init();
-
     //Checks to see if our Servo Driver support a GP Player
 #ifdef DBGSerial
     DBGSerial.println("Program Start");
 #endif
+
+    // Init our ServoDriver
+    g_ServoDriver.Init();
+
     // debug stuff
     delay(10);
 

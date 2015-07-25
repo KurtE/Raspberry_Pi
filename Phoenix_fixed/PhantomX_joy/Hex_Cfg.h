@@ -134,7 +134,7 @@
 #define cLMFemurPin     15   //Middle Left leg Hip Vertical
 #define cLMTibiaPin     17  //Middle Left leg Knee
 
-#define cLFCoxaPin      1   //Front Left leg Hip Horizontal
+#define cLFCoxaPin      19  //Front Left leg Hip Horizontal (Was 1)
 #define cLFFemurPin     3   //Front Left leg Hip Vertical
 #define cLFTibiaPin     5   //Front Left leg Knee
 
