@@ -28,15 +28,44 @@
 #include "Hex_Cfg.h"
 #include "Phoenix.h"
 #include "speak.h"
+#include <signal.h>
+
+
+
 extern void setup(void);
 extern void loop(void);
+extern void cleanup(void);
+
+//--------------------------------------------------------------------------
+// SignalHandler - Try to free up things like servos if we abort.
+//--------------------------------------------------------------------------
+volatile uint8_t g_fSignaled = false;
+
+void SignalHandler(int sig){
+    printf("Caught signal %d\n", sig);
+    g_fSignaled = true;
+}
+
 
 int main()
 {
+    // Install signal handler to allow us to do some cleanup...
+    struct sigaction sigIntHandler;
+
+    sigIntHandler.sa_handler = SignalHandler;
+    sigemptyset(&sigIntHandler.sa_mask);
+    sigIntHandler.sa_flags = 0;
+
+    sigaction(SIGINT, &sigIntHandler, NULL);
+    sigaction(SIGQUIT, &sigIntHandler, NULL);
+
+
     setup();
 
-    for(;;)
+    while (!g_fSignaled)
     {
         loop();
     }
+    // Call cleanup function and exit;
+    cleanup();
 }

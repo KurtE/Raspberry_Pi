@@ -605,6 +605,26 @@ While still in the program I tried:
 
 After that when I pressed the PS button, the lite came on and the /dev/input/js0 device was created.
 
+Warning: 
+---
+It now appears that Bluez5 is hanging the Odroid XU3 during the shutdown process. Not sure why yet, but I have tried a few different things so far to get around it. 
+
+But for PS3, the Odroid forum member Meveric has a repository where you can install the sixad package, like I did for Intel NUC. 
+
+The posting: http://forum.odroid.com/viewtopic.php?f=52&t=5908 Gives instructions on how to setup to use his repositories. 
+
+Once they are installed, you can then do: 
+
+	sudo apt-get install sixad
+
+After that completes, you can plug the PS3 into usb and type: sudo sixpair 
+Which should do the pairing of the PS3 to your Odroid.  You can then unplug the PS3 and start up the sixad daemon.
+I did this with the command:
+
+	sixad --boot-yes
+
+After you boot hopefull you just have to press the PS button to activate the PS3. 
+
 
 
 

@@ -1,6 +1,8 @@
 #~~~~~~~~~~~~~~~~~~~~ Output File Name ~~~~~~~~~~~~~~~~~~~~
 MAIN_OUT = Phantom_Phoenix
 
+BIOLOIDEX = BioloidEX
+
 #~~~~~~~~~~~~~~~~~~~~ Source Files ~~~~~~~~~~~~~~~~~~~~
 SOURCES = \
 		Phantom_Phoenix.cpp \
@@ -15,20 +17,20 @@ MAIN_DEPS:= $(subst .cpp,.d,$(SOURCES))
 #~~~~~~~~~~~~~~~~~~~~ Include Directories ~~~~~~~~~~~~~~~~~~~~
 ifeq ($(OSTYPE),linux-gnueabi)
 #BBBk
-INCLUDE_DIRS = -I. -I../library -I../BioloidEX_Usb2Ax
+INCLUDE_DIRS = -I. -I../library -I../$(BIOLOIDEX) 
 else
-INCLUDE_DIRS = -I. -I../library -I/usr/include/espeak -I../BioloidEX_Usb2Ax
+INCLUDE_DIRS = -I. -I../library -I../$(BIOLOIDEX) -I/usr/include/espeak
 endif
 
 #~~~~~~~~~~~~~~~~~~~~ Library Directories ~~~~~~~~~~~~~~~~~~~~
 ifeq ($(OSTYPE),linux-gnueabi)
-LIBRARY_DIRS = -L/usr/lib/arm-angstrom-linux-gnueabi/4.7.3 -L../BioloidEX_Usb2Ax -L../library
+LIBRARY_DIRS = -L/usr/lib/arm-angstrom-linux-gnueabi/4.7.3 -L../$(BIOLOIDEX) -L../library
 else
 ifeq ($(OSTYPE),Edison)
 LDFLAGS = $(LIBRARY_DIRS) -lpthread -lBioloidEX -lArduinoPort -lrt
-LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../BioloidEX_Usb2Ax -L../library
+LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../$(BIOLOIDEX) -L../library
 else
-LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../library -L../BioloidEX_Usb2Ax -L../library
+LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../library -L../$(BIOLOIDEX) -L../library
 endif
 endif
 

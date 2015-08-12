@@ -389,7 +389,12 @@ void *BioloidControllerEx::WorkerThreadProc(void *pv)
 
 void BioloidControllerEx::end()
 {
+
+    // try to wake up the thread.
+    pthread_mutex_lock(&mutex_);
+    pthread_cond_signal(&cond_);
     _fCancel = true;
+    pthread_mutex_unlock(&mutex_);
     
    	// pthread_join to sync
     struct timespec ts;

@@ -1,10 +1,8 @@
-// Warning - This version is hacked up to use Kurt's extended USB2AX
-//
 //====================================================================
 //Project Lynxmotion Phoenix
 //
-// Servo Driver - This version is setup to use the SSC-32 to control
-// the servos.
+// Servo Driver - This version is setup to use a USB2AX to control
+// Dynamixel servos such as the AX-12, or AX-18
 //====================================================================
 #include "Hex_Cfg.h"
 #include "Phoenix.h"
@@ -212,6 +210,7 @@ void ServoDriver::Cleanup(void) {
         dxl_write_byte((cPinTable[iServo]), AX_LED, 0);
         dxl_get_result();   // don't care for now
     }
+    bioloid.end();	// tell the driver to abort
 
 }
 

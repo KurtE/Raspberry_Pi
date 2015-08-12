@@ -16,17 +16,6 @@
 #define HEX_CFG_H
 #include "ArduinoDefs.h"
 
-//==================================================================================================================================
-// Define which input classes we will use. If we wish to use more than one we need to define USEMULTI - This will define a forwarder
-//    type implementation, that the Inputcontroller will need to call.  There will be some negotion for which one is in contol.
-//
-//  If this is not defined, The included Controller should simply implement the InputController Class...
-//==================================================================================================================================
-//#define USEMULTI
-//#define USEXBEE            // only allow to be defined on Megas...
-//#define USEPS2
-#define USECOMMANDER
-
 // Global defines to control which configuration we are using.  Note: Only define one of these...
 //
 // Which type of control(s) do you want to compile in
@@ -38,7 +27,6 @@
 #define DBGSerial         DBGSerialWrapper
 
 // Define other optional compnents to be included or not...
-//#define PHANTOMX_V2     // Some code may depend on it being a V2 PhantomX
 #define cFemurHornOffset1 -70
 #define cTibiaHornOffset1 380
 #define cRRTibiaInv 0 
@@ -87,7 +75,6 @@
 // Also define that we are using the AX12 driver
 #define USE_AX12_DRIVER
 //#define OPT_BACKGROUND_PROCESS    // The AX12 has a background process
-//#define OPT_GPPLAYER      // We are not interested in this pass.
 
 
 //==================================================================================================================================
@@ -148,7 +135,7 @@
 #define cLMFemurPin     15   //Middle Left leg Hip Vertical
 #define cLMTibiaPin     17  //Middle Left leg Knee
 
-#define cLFCoxaPin      19   //Front Left leg Hip Horizontal  (was 1)
+#define cLFCoxaPin      19  //Front Left leg Hip Horizontal (Was 1)
 #define cLFFemurPin     3   //Front Left leg Hip Vertical
 #define cLFTibiaPin     5   //Front Left leg Knee
 

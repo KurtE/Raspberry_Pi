@@ -1,6 +1,8 @@
 #~~~~~~~~~~~~~~~~~~~~ Output File Name ~~~~~~~~~~~~~~~~~~~~
 MAIN_OUT = Phantom_Phoenix
 
+BIOLOIDEX = BioloidEX
+
 #~~~~~~~~~~~~~~~~~~~~ Source Files ~~~~~~~~~~~~~~~~~~~~
 SOURCES = \
 		Phantom_Phoenix.cpp \
@@ -15,16 +17,16 @@ MAIN_DEPS:= $(notdir $(subst .cpp,.d,$(SOURCES)))
 #~~~~~~~~~~~~~~~~~~~~ Include Directories ~~~~~~~~~~~~~~~~~~~~
 ifeq ($(OSTYPE),linux-gnueabi)
 #BBBk
-INCLUDE_DIRS = -I. -I../src/ -I../../library -I../../BioloidEX_Usb2Ax 
+INCLUDE_DIRS = -I. -I../src/ -I../../library -I../../$(BIOLOIDEX) 
 else
-INCLUDE_DIRS = -I. -I../src/ -I../../library -I../../BioloidEX_Usb2Ax -I/usr/include/espeak
+INCLUDE_DIRS = -I. -I../src/ -I../../library -I../../$(BIOLOIDEX) -I/usr/include/espeak
 endif
 
 #~~~~~~~~~~~~~~~~~~~~ Library Directories ~~~~~~~~~~~~~~~~~~~~
 ifeq ($(OSTYPE),linux-gnueabi)
-LIBRARY_DIRS = -L/usr/lib/arm-angstrom-linux-gnueabi/4.7.3 -L../../library -L../BioloidEX_Usb2Ax -L../library
+LIBRARY_DIRS = -L/usr/lib/arm-angstrom-linux-gnueabi/4.7.3 -L../../library -L../$(BIOLOIDEX) -L../library
 else
-LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../../library -L../../BioloidEX_Usb2Ax -L../library
+LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../../library -L../../$(BIOLOIDEX) -L../library
 endif
 
 #~~~~~~~~~~~~~~~~~~~~ Compiler Options ~~~~~~~~~~~~~~~~~~~~
@@ -49,11 +51,11 @@ CXX = $(TCHAIN_PREFIX)g++
 CXXFLAGS = $(COMPILE_OPTS) $(INCLUDE_DIRS)
 
 #~~~~~~~~~~~~~~~~~~~~ all ~~~~~~~~~~~~~~~~~~~~
-all: LIBRARY BioloidEX_Usb2Ax begin gccversion build end
+all: LIBRARY BioloidEX begin gccversion build end
 
 #~~~~~~~~~~~~~~~~~~~~ library ~~~~~~~~~~~~~~~~~~~~
-BioloidEX_Usb2Ax:
-	cd ../../BioloidEX_Usb2Ax; $(MAKE)
+BioloidEX:
+	cd ../../$(BIOLOIDEX); $(MAKE)
 
 #~~~~~~~~~~~~~~~~~~~~ library ~~~~~~~~~~~~~~~~~~~~
 LIBRARY:
@@ -67,7 +69,7 @@ build: $(MAIN_OUT)
 
 
 # added specific dependence on my own library...
-$(MAIN_OUT): $(MAIN_OBJS) ../../library/libArduinoPort.a
+$(MAIN_OUT): $(MAIN_OBJS) ../../library/libArduinoPort.a ../../BioloidEX/libBioloidEX.a
 	$(CXX) $(CXXFLAGS) $(MAIN_OBJS) -o $(MAIN_OUT) $(LDFLAGS)
 
 MSG_BEGIN = -------- begin --------
