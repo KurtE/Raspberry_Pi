@@ -28,7 +28,7 @@ int dxl_hal_open(int deviceIndex, float baudrate)
 	//struct serial_struct serinfo;
 	char dev_name[100] = {0, };
 
-	sprintf(dev_name, "/dev/ttyACM%d", deviceIndex); // USB2AX is ttyACM
+	sprintf(dev_name, "/dev/ttyUSB2Ax"); // USB2AX is ttyACM
 
 	strcpy(gDeviceName, dev_name);
 	memset(&newtio, 0, sizeof(newtio));
