@@ -9,15 +9,18 @@ MAIN_OBJS:= $(subst .cpp,.o,$(SOURCES))
 
 MAIN_DEPS:= $(subst .cpp,.d,$(SOURCES))
 
+#~~~~~~~~~~~~ Which version of USB2AX am I using ~~~~~~~~~~~~
+BIOLOIDEX = BioloidEX
+
 #~~~~~~~~~~~~~~~~~~~~ Include Directories ~~~~~~~~~~~~~~~~~~~~
-INCLUDE_DIRS = -I. -I../library -I../BioloidEX_Usb2Ax
+INCLUDE_DIRS = -I. -I../library -I../$(BIOLOIDEX)
 
 
 #~~~~~~~~~~~~~~~~~~~~ Library Directories ~~~~~~~~~~~~~~~~~~~~
 ifeq ($(OSTYPE),linux-gnueabi)
-LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../BioloidEX_Usb2Ax -L../library
+LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../$(BIOLOIDEX) -L../library
 else
-LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../BioloidEX_Usb2Ax -L../library
+LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../$(BIOLOIDEX) -L../library
 endif
 
 
@@ -46,15 +49,15 @@ CXXFLAGS = $(COMPILE_OPTS) $(INCLUDE_DIRS)
 
 #~~~~~~~~~~~~~~~~~~~~ all ~~~~~~~~~~~~~~~~~~~~
 
-all: LIBRARY BioloidEX_Usb2Ax begin gccversion build end
+all: LIBRARY $(BIOLOIDEX) begin gccversion build end
 
 #~~~~~~~~~~~~~~~~~~~~ library ~~~~~~~~~~~~~~~~~~~~
 LIBRARY:
 	cd ../library; $(MAKE)
 
 #~~~~~~~~~~~~~~~~~~~~ library ~~~~~~~~~~~~~~~~~~~~
-BioloidEX_Usb2Ax:
-	cd ../BioloidEX_Usb2Ax; $(MAKE)
+$(BIOLOIDEX):
+	cd ../$(BIOLOIDEX); $(MAKE)
 
 
 #~~~~~~~~~~~~~~~~~~~~ build ~~~~~~~~~~~~~~~~~~~~
@@ -62,7 +65,7 @@ BioloidEX_Usb2Ax:
 
 build: $(MAIN_OUT)
 
-$(MAIN_OUT): $(MAIN_OBJS) ../library/libArduinoPort.a ../BioloidEX_Usb2Ax/libBioloidEX.a
+$(MAIN_OUT): $(MAIN_OBJS) ../library/libArduinoPort.a ../$(BIOLOIDEX)/libBioloidEX.a
 	$(CXX) $(CXXFLAGS) $(MAIN_OBJS) -o $(MAIN_OUT) $(LDFLAGS)
 
 MSG_BEGIN = -------- begin --------
@@ -88,7 +91,7 @@ clean_list:
 	-rm $(MAIN_OUT)
 	-rm $(MAIN_DEPS)
 	-cd ../library ; make clean
-	-cd ../BioloidEX_Usb2Ax ; make clean
+	-cd ../$(BIOLOIDEX) ; make clean
 
 #~~~~~~~~~~~~~~~~~~~~ backup ~~~~~~~~~~~~~~~~~~~~
 backup: clean
