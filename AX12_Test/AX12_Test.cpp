@@ -2,7 +2,7 @@
 // Kurts Test program to try out different ways to manipulate the AX12 servos on the PhantomX
 // This is a test, only a test...  
 //====================================================================================================
-//=============================================================================
+//============================================================================
 // Global Include files
 //=============================================================================
 #include <math.h>
@@ -29,16 +29,23 @@
 #include "BioloidEX.h"
 
 //=============================================================================
+// Options...
 //=============================================================================
 
 // Uncomment the next line if building for a Quad instead of a Hexapod.
+//#define HROS1_MODE
 //#define QUAD_MODE
 #define TURRET
+#define SERVO1_SPECIAL
 
-// Header files...
+#define MAX_SERVOS  32
+//=============================================================================
+// Define differnt robots..
+//=============================================================================
 
 // Constants
 /* Servo IDs */
+// ID's for hexapod and quad
 #define     RF_COXA       2
 #define     RF_FEMUR      4
 #define     RF_TIBIA      6
@@ -51,7 +58,11 @@
 #define     RR_FEMUR     10
 #define     RR_TIBIA     12
 
+#ifdef SERVO1_SPECIAL
+#define     LF_COXA       19
+#else
 #define     LF_COXA       1
+#endif
 #define     LF_FEMUR      3
 #define     LF_TIBIA      5
 
@@ -63,12 +74,14 @@
 #define     LR_FEMUR      9
 #define     LR_TIBIA     11
 
-#ifdef TURRET
 #define     TURRET_ROT    20
 #define     TURRET_TILT   21
-#endif
 
-static const byte pgm_axdIDs[] PROGMEM = {
+
+//=============================================================================
+// Hexapod
+//=============================================================================
+const uint8_t g_hex_pin_table[]  = {
   LF_COXA, LF_FEMUR, LF_TIBIA,    
 #ifndef QUAD_MODE
   LM_COXA, LM_FEMUR, LM_TIBIA,    
@@ -85,7 +98,33 @@ static const byte pgm_axdIDs[] PROGMEM = {
 };    
 
 #define NUM_SERVOS (sizeof(pgm_axdIDs)/sizeof(pgm_axdIDs[0]))
-const char* IKPinsNames[] = {
+const char* g_hex_pin_names[] = {
+  "LFC","LFF","LFT",
+  "LMC","LMF","LMT",
+  "LRC","LRF","LRT",
+  "RFC","RFF","RFT",
+  "RMC","RMF","RMT",
+  "RRC","RRF","RRT",
+#ifdef TURRET
+  "T-ROT", "T-TILT"
+#endif
+};
+
+//=============================================================================
+// Quad
+//=============================================================================
+
+const uint8_t g_quad_pin_table[]  = {
+  LF_COXA, LF_FEMUR, LF_TIBIA,    
+  LR_COXA, LR_FEMUR, LR_TIBIA,
+  RF_COXA, RF_FEMUR, RF_TIBIA, 
+  RR_COXA, RR_FEMUR, RR_TIBIA
+#ifdef TURRET
+  , TURRET_ROT, TURRET_TILT
+#endif
+};    
+
+const char* g_quad_pin_names[] = {
   "LFC","LFF","LFT",
 #ifndef QUAD_MODE
   "LMC","LMF","LMT",
@@ -101,7 +140,66 @@ const char* IKPinsNames[] = {
 #endif
 };
 
-// Global objects
+//=============================================================================
+// HROS1 
+//=============================================================================
+		enum
+		{
+			ID_R_SHOULDER_PITCH     = 1,
+			ID_L_SHOULDER_PITCH     = 2,
+			ID_R_SHOULDER_ROLL      = 3,
+			ID_L_SHOULDER_ROLL      = 4,
+			ID_R_ELBOW              = 5,
+			ID_L_ELBOW              = 6,
+			ID_R_HIP_YAW            = 7,
+			ID_L_HIP_YAW            = 8,
+			ID_R_HIP_ROLL           = 9,
+			ID_L_HIP_ROLL           = 10,
+			ID_R_HIP_PITCH          = 11,
+			ID_L_HIP_PITCH          = 12,
+			ID_R_KNEE               = 13,
+			ID_L_KNEE               = 14,
+			ID_R_ANKLE_PITCH        = 15,
+			ID_L_ANKLE_PITCH        = 16,
+			ID_R_ANKLE_ROLL         = 17,
+			ID_L_ANKLE_ROLL         = 18,
+			ID_HEAD_PAN             = 19,
+			ID_HEAD_TILT            = 20
+		};
+const uint8_t g_hros1_pin_table[]  = {
+            1,2,3,4,5,6,7,8,9,10,
+            11,12,13,14,15,16,17,18,19,20}; // SHould use names above...
+
+const char* g_hros1_pin_names[] = {
+			"R_SHOULDER_PITCH", "L_SHOULDER_PITCH", "R_SHOULDER_ROLL", "L_SHOULDER_ROLL", 
+            "R_ELBOW", 	"L_ELBOW", "R_HIP_YAW", "L_HIP_YAW",
+			"R_HIP_ROLL", "L_HIP_ROLL", "R_HIP_PITCH", "L_HIP_PITCH",
+			"R_KNEE", "L_KNEE", "R_ANKLE_PITCH", "L_ANKLE_PITCH",
+			"R_ANKLE_ROLL", "L_ANKLE_ROLL", "HEAD_PAN", "HEAD_TILT",
+		};
+
+
+//=============================================================================
+// Globals
+//=============================================================================
+// Servo Table: start off with Hexapod as default
+
+#if defined (HROS1_MODE)
+int            g_count_servos  = (sizeof(g_hros1_pin_table)/sizeof(g_hros1_pin_table[0]));
+const uint8_t  * g_servo_id_table = g_hros1_pin_table;
+const char     **g_servo_name_table = g_hros1_pin_names;
+#elif defined(QUAD_MODE)
+int            g_count_servos  = (sizeof(g_quad_pin_table)/sizeof(g_quad_pin_table[0]));
+const uint8_t  * g_servo_id_table = g_quad_pin_table;
+const char     **g_servo_name_table = g_quad_pin_names;
+#else
+int            g_count_servos  = (sizeof(g_hex_pin_table)/sizeof(g_hex_pin_table[0]));
+const uint8_t  * g_servo_id_table = g_hex_pin_table;
+const char     **g_servo_name_table = g_hex_pin_names;
+#endif
+
+uint8_t        g_id_controller = AX_ID_DEVICE;
+
 /* IK Engine */
 WrapperSerial Serial = WrapperSerial();
 
@@ -111,10 +209,15 @@ char           g_aszCmdLine[80];
 uint8_t        g_iszCmdLine;
 boolean        g_fTrackServos = false;
 
+int            g_asPositionsPrev[MAX_SERVOS];
+int            g_asMins[MAX_SERVOS];
+int            g_asMaxs[MAX_SERVOS];
+
+
 // Values to use for servo position...
-byte          g_bServoID;
-word          g_wServoGoalPos;
-word          g_wServoGoalSpeed;
+uint8_t        g_bServoID;
+word           g_wServoGoalPos;
+word           g_wServoGoalSpeed;
 
 // forward references
 extern void setup(void);
@@ -125,7 +228,7 @@ extern void AllServosOff(void);
 extern uint8_t GetCommandLine(void);
 extern boolean FGetNextCmdNum(word *pw );
 extern void AllServosCenter(void);
-extern void HoldOrFreeServos(byte fHold);
+extern void HoldOrFreeServos(uint8_t fHold);
 extern void SetServoPosition(void) ;
 extern void SetServoID(void);
 extern void WaitForMoveToComplete(word wID);
@@ -133,6 +236,7 @@ extern void GetServoPositions(void);
 extern void TrackServos(boolean fInit);
 extern void TrackPrintMinsMaxs(void);
 extern void PrintServoValues(void);
+extern void SetServosReturnDelay(void);
 
 
 //====================================================================================================
@@ -143,6 +247,11 @@ void SignalHandler(int sig){
 
     // Stop motors if they are active
     AllServosOff();
+
+    // If on 200 we may have to turn power off...
+    if (g_id_controller== 200)
+        ax12SetRegister(g_id_controller, AX_TORQUE_ENABLE, 0x0);
+
     exit(1); 
 
 }
@@ -171,6 +280,29 @@ int main(int argc, char *argv[])
             {
                     printf("%d - %s\n", i, argv[i]);
             }
+            // See if hex, quad, biped (only look at first char)
+            char c = *(argv[1]);
+            if ((c == 'h') || (c == 'H')) 
+            {
+                printf("Hexapod\n");
+                g_count_servos  = (sizeof(g_hex_pin_table)/sizeof(g_hex_pin_table[0]));
+                g_servo_id_table = g_hex_pin_table;
+                g_servo_name_table = g_hex_pin_names;
+            }
+            else if ((c == 'q') || (c == 'Q')) 
+            {
+                printf("Quad\n");
+                g_count_servos  = (sizeof(g_quad_pin_table)/sizeof(g_quad_pin_table[0]));
+                g_servo_id_table = g_quad_pin_table;
+                g_servo_name_table = g_quad_pin_names;
+            }
+            else if ((c == 'b') || (c == 'B')) 
+            {
+                printf("Biped - HROS1\n");
+                g_count_servos  = (sizeof(g_hros1_pin_table)/sizeof(g_hros1_pin_table[0]));
+                g_servo_id_table = g_hros1_pin_table;
+                g_servo_name_table = g_hros1_pin_names;
+            }
         }
     char *pszDevice;    
 
@@ -190,14 +322,37 @@ int main(int argc, char *argv[])
 // Setup 
 //====================================================================================================
 void setup() {
-  Serial.begin();  // start off the serial port.  
-  if(dxl_initialize(0, 1) == 0) {
-	//printf("Failed to open USBDynamixel\n");
-  }	
+    Serial.begin();  // start off the serial port.  
+    if(dxl_initialize(0, 1) == 0) 
+    {
+        printf("Failed to open USBDynamixel\n");
+    }	
 
-  delay(1000);
-  Serial.print("System Voltage in 10ths: ");
-  Serial.println(g_wVoltage = ax12GetRegister(1, AX_PRESENT_VOLTAGE, 1), DEC);
+    // First lets try to see what controller we are using, lets first try id 253 which is default USB2AX
+    delay(1000);
+    word  wModel = ax12GetRegister(g_id_controller, AX_MODEL_NUMBER_L, 2 );
+
+    if (wModel == 0xffff) 
+    {
+        //Try 200 for CM730 like controller
+        g_id_controller = 200;
+        wModel = ax12GetRegister(g_id_controller, AX_MODEL_NUMBER_L, 2 );
+    }
+
+    if (wModel != 0xffff)
+        printf("Controller model %x on %x\n", wModel, g_id_controller);
+    else
+    {
+        printf("Controller not found\n");
+        g_id_controller = 0;    // say that we don't have this
+    }
+
+    // If on 200 we may have to turn servo power on...
+    if (g_id_controller== 200)
+        ax12SetRegister(g_id_controller, AX_TORQUE_ENABLE, 0x1);
+
+    Serial.print("System Voltage in 10ths: ");
+    Serial.println(g_wVoltage = ax12GetRegister(1, AX_PRESENT_VOLTAGE, 1), DEC);
 }
 
 
@@ -222,11 +377,7 @@ void loop() {
   Serial.println("2 - Set Servo position [<Servo>] <Position> [<Speed>]");
   Serial.println("3 - Set Servo Angle");
   Serial.println("4 - Get Servo Positions");
-#if 0
-  Serial.println("5 - Timed Move: <Servo> <From> <to> <speed> <cnt>");
-  Serial.println("6 - Timed 2: <Servo> <speed>");
-  Serial.println("7 - Timed 3: <Servo> <Dist> <Time>");
-#endif
+  Serial.println("7 - Set Servos return delay");
   Serial.println("8 - Set ID: <old> <new>");
   Serial.println("9 - Print Servo Values");
   Serial.println("t - Toggle track Servos");
@@ -253,17 +404,9 @@ void loop() {
     case '4':
       GetServoPositions();
       break;
-#if 0
-    case '5':
-      TimedMove();
+    case '7' :
+      SetServosReturnDelay();
       break;
-    case '6':
-      TimedMove2();
-      break;
-    case '7':
-      TimedMove3();
-      break;
-#endif
     case '8':
       SetServoID();
       break;
@@ -332,29 +475,46 @@ boolean FGetNextCmdNum(word *pw ) {
 }
 
 //=======================================================================================
+void SetServosReturnDelay(void) {
+    // Allow user to pass in, default 0
+    word wDelay;
+    
+    if (!FGetNextCmdNum(&wDelay ))
+        wDelay = 0;
+    wDelay &= 0xff; // make sure in one byte    
+
+    for (int i = 0; i < g_count_servos; i++) {
+        ax12SetRegister(g_servo_id_table[i], AX_RETURN_DELAY_TIME, wDelay);
+    }
+}
+
+
+//=======================================================================================
 void AllServosOff(void) {
-  for (int i = 0; i < NUM_SERVOS; i++) {
-    ax12SetRegister(pgm_read_byte(&pgm_axdIDs[i]), AX_TORQUE_ENABLE, 0x0);
+  for (int i = 0; i < g_count_servos; i++) {
+    ax12SetRegister(g_servo_id_table[i], AX_TORQUE_ENABLE, 0x0);
   }
 }
+
+
 //=======================================================================================
 void AllServosCenter(void) {
-  for (int i = 0; i < NUM_SERVOS; i++) {
+  for (int i = 0; i < g_count_servos; i++) {
     // See if this turns the motor off and I can turn it back on...
-    ax12SetRegister(pgm_read_byte(&pgm_axdIDs[i]), AX_TORQUE_ENABLE, 0x1);
+    ax12SetRegister(g_servo_id_table[i], AX_TORQUE_ENABLE, 0x1);
 //    ax12ReadPacket(6);  // git the response...
-    ax12SetRegister2(pgm_read_byte(&pgm_axdIDs[i]), AX_GOAL_POSITION_L, 0x1ff);
+    ax12SetRegister2(g_servo_id_table[i], AX_GOAL_POSITION_L, 0x1ff);
 //    ax12ReadPacket(6);  // git the response...
   }
 }
 //=======================================================================================
-void HoldOrFreeServos(byte fHold) {
+void HoldOrFreeServos(uint8_t fHold) {
   word iServo;
 
   if (!FGetNextCmdNum(&iServo)) {
     // All servos...
-    for (int i = 0; i < NUM_SERVOS; i++) {
-      ax12SetRegister(pgm_read_byte(&pgm_axdIDs[i]), AX_TORQUE_ENABLE, fHold);
+    for (int i = 0; i < g_count_servos; i++) {
+      ax12SetRegister(g_servo_id_table[i], AX_TORQUE_ENABLE, fHold);
 //      ax12ReadPacket(6);  // git the response...
     }
   } 
@@ -436,37 +596,37 @@ void GetServoPositions(void) {
   unsigned long ulBefore;
   unsigned long ulDelta;
   int w;
-  for (int i = 0; i < NUM_SERVOS; i++) {
-    Serial.print((byte)pgm_read_byte(&pgm_axdIDs[i]), DEC);
-    Serial.print(":");
+  for (int i = 0; i < g_count_servos; i++) {
+    Serial.print((uint8_t)g_servo_id_table[i], DEC);
+    Serial.print("(");
+    Serial.print(g_servo_name_table[i]);
+    Serial.print("):");
     ulBefore = micros();
-    w = ax12GetRegister(pgm_read_byte(&pgm_axdIDs[i]), AX_PRESENT_POSITION_L, 2 );
+    w = ax12GetRegister(g_servo_id_table[i], AX_PRESENT_POSITION_L, 2 );
     ulDelta = micros() - ulBefore;
     Serial.print(w, DEC);
     Serial.print(" ");
     Serial.print(ulDelta, DEC);
     Serial.print(" ");
-    Serial.println(ax12GetRegister(pgm_read_byte(&pgm_axdIDs[i]), AX_RETURN_DELAY_TIME, 1), DEC);
+    Serial.println(ax12GetRegister(g_servo_id_table[i], AX_RETURN_DELAY_TIME, 1), DEC);
 
     if (w == 0xffff) {
       Serial.print("   Retry: ");
-      w = ax12GetRegister(pgm_read_byte(&pgm_axdIDs[i]), AX_PRESENT_POSITION_L, 2 );
+      w = ax12GetRegister(g_servo_id_table[i], AX_PRESENT_POSITION_L, 2 );
       Serial.println(w, DEC);
     }    
     delay (100);
   }
 }
+
 //=======================================================================================
-int g_asPositionsPrev[NUM_SERVOS];
-int g_asMins[NUM_SERVOS];
-int g_asMaxs[NUM_SERVOS];
 
 void TrackServos(boolean fInit) {
 
   int w;
   bool fSomethingChanged = false;
-  for (int i = 0; i < NUM_SERVOS; i++) {
-    w = ax12GetRegister(pgm_read_byte(&pgm_axdIDs[i]), AX_PRESENT_POSITION_L, 2 );
+  for (int i = 0; i < g_count_servos; i++) {
+    w = ax12GetRegister(g_servo_id_table[i], AX_PRESENT_POSITION_L, 2 );
     if (fInit) {
       g_asMins[i] = w;
       g_asMaxs[i] = w;
@@ -475,9 +635,9 @@ void TrackServos(boolean fInit) {
       if (!fInit) {
         // only print if we moved more than some delta...
         if (abs(w-g_asPositionsPrev[i]) > 3) {
-          Serial.print(IKPinsNames[i]);
+          Serial.print(g_servo_name_table[i]);
           Serial.print("(");
-          Serial.print((byte)pgm_read_byte(&pgm_axdIDs[i]), DEC);
+          Serial.print((uint8_t)g_servo_id_table[i], DEC);
           Serial.print("):");
           Serial.print(w, DEC);
           Serial.print("(");
@@ -500,8 +660,8 @@ void TrackServos(boolean fInit) {
 
 //=======================================================================================
 void TrackPrintMinsMaxs(void) {
-  for (int i = 0; i < NUM_SERVOS; i++) {
-    Serial.print((byte)pgm_read_byte(&pgm_axdIDs[i]), DEC);
+  for (int i = 0; i < g_count_servos; i++) {
+    Serial.print((uint8_t)g_servo_id_table[i], DEC);
     Serial.print(":");
     Serial.print(g_asMins[i], DEC);
     Serial.print("(");
