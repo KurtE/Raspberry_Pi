@@ -20,25 +20,26 @@ long	glStartTime	= 0;
 float	gfRcvWaitTime	= 0.0f;
 float	gfByteTransTime	= 0.0f;
 
-char	gDeviceName[20];
-
 int dxl_hal_open(int deviceIndex, float baudrate)
 {
 	struct termios newtio;
 	//struct serial_struct serinfo;
-	char dev_name[100] = {0, };
+	char dev_name[20] = "/dev/ttyDXL";
 
-	sprintf(dev_name, "/dev/ttyACM%d", deviceIndex); // USB2AX is ttyACM
+    // Build in support to explit device - /dev/ttyDXL
+	dxl_hal_close();    // Make sure any previous handle is closed
+    
+	if((gSocket_fd = open(dev_name, O_RDWR|O_NOCTTY|O_NONBLOCK)) < 0) {
+        // We did not find our explicit one, lets try the standard default USB2AX file name
+        sprintf(dev_name, "/dev/ttyACM%d", deviceIndex); // USB2AX is ttyACM
+        
+        if((gSocket_fd = open(dev_name, O_RDWR|O_NOCTTY|O_NONBLOCK)) < 0) {
+            fprintf(stderr, "device open error: %s\n", dev_name);
+            goto DXL_HAL_OPEN_ERROR;
+        }
+    }
 
-	strcpy(gDeviceName, dev_name);
 	memset(&newtio, 0, sizeof(newtio));
-	dxl_hal_close();
-	
-	if((gSocket_fd = open(gDeviceName, O_RDWR|O_NOCTTY|O_NONBLOCK)) < 0) {
-		fprintf(stderr, "device open error: %s\n", dev_name);
-		goto DXL_HAL_OPEN_ERROR;
-	}
-
 	newtio.c_cflag		= B1000000|CS8|CLOCAL|CREAD;
 	newtio.c_iflag		= IGNPAR;
 	newtio.c_oflag		= 0;
@@ -72,11 +73,10 @@ int dxl_hal_open(int deviceIndex, float baudrate)
 	
 	gfByteTransTime = (float)((1000.0f / baudrate) * 12.0f);
 	
-	strcpy(gDeviceName, dev_name);
 	memset(&newtio, 0, sizeof(newtio));
 	dxl_hal_close();
 	
-	if((gSocket_fd = open(gDeviceName, O_RDWR|O_NOCTTY|O_NONBLOCK)) < 0) {
+	if((gSocket_fd = open(dev_name, O_RDWR|O_NOCTTY|O_NONBLOCK)) < 0) {
 		fprintf(stderr, "device open error: %s\n", dev_name);
 		goto DXL_HAL_OPEN_ERROR;
 	}
