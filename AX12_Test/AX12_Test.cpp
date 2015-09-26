@@ -247,10 +247,13 @@ void SignalHandler(int sig){
 
     // Stop motors if they are active
     AllServosOff();
-
+    printf("All Servos off\n");
+    
     // If on 200 we may have to turn power off...
-    if (g_id_controller== 200)
+    if (g_id_controller== 200) {
         ax12SetRegister(g_id_controller, AX_TORQUE_ENABLE, 0x0);
+        printf("Controller turn power off\n");
+    }
 
     exit(1); 
 
@@ -340,7 +343,7 @@ void setup() {
     }
 
     if (wModel != 0xffff)
-        printf("Controller model %x on %x\n", wModel, g_id_controller);
+        printf("Controller model %x on %x(%d)\n", wModel, g_id_controller,  g_id_controller);
     else
     {
         printf("Controller not found\n");
@@ -442,19 +445,24 @@ uint8_t GetCommandLine(void) {
   int ch;
   uint8_t ich = 0;
   g_iszCmdLine = 0;
+  int cch;
 
   for(;;) {
     // throw away any thing less than CR character...
-    ch = Serial.read();
-    if ((ch >= 10) && (ch <=15)) {
-      g_aszCmdLine[ich] = 0;
-      return ich;
-    }    
-    if (ch != -1) 
-      g_aszCmdLine[ich++] = ch;
-
+    cch = Serial.available();
+    while (cch--) {
+        ch = Serial.read();
+        if ((ch >= 10) && (ch <=15)) {
+          g_aszCmdLine[ich] = 0;
+          return ich;
+        }    
+        if (ch != -1) 
+          g_aszCmdLine[ich++] = ch;
+    }
     if (g_fTrackServos)
       TrackServos(false);
+    else
+       delay(100);
   }
 }
 
