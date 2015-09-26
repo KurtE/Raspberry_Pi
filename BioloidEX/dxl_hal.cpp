@@ -23,7 +23,7 @@ float	gfByteTransTime	= 0.0f;
 int dxl_hal_open(int deviceIndex, float baudrate)
 {
 	struct termios newtio;
-	//struct serial_struct serinfo;
+	struct serial_struct serinfo;
 	char dev_name[20] = "/dev/ttyDXL";
 
     // Build in support to explit device - /dev/ttyDXL
@@ -54,21 +54,19 @@ int dxl_hal_open(int deviceIndex, float baudrate)
 		return 0;
         
 	//USB2AX uses the CDC ACM driver for which these settings do not exist.
-    /*
-	if(ioctl(gSocket_fd, TIOCGSERIAL, &serinfo) < 0) {
-		fprintf(stderr, "Cannot get serial info\n");
-		return 0;
+    // However this code may also be used with Arbotix Pro... 
+	if(ioctl(gSocket_fd, TIOCGSERIAL, &serinfo) >= 0) {
+        fprintf(stderr, "Read serial info\n");
+        serinfo.flags &= ~ASYNC_SPD_MASK;
+        serinfo.flags |= ASYNC_SPD_CUST;
+        serinfo.custom_divisor = serinfo.baud_base / baudrate;
+        
+        if(ioctl(gSocket_fd, TIOCSSERIAL, &serinfo) < 0) {
+            fprintf(stderr, "Cannot set serial info\n");
+            return 0;
+        }
 	}
-	
-	serinfo.flags &= ~ASYNC_SPD_MASK;
-	serinfo.flags |= ASYNC_SPD_CUST;
-	serinfo.custom_divisor = serinfo.baud_base / baudrate;
-	
-	if(ioctl(gSocket_fd, TIOCSSERIAL, &serinfo) < 0) {
-		fprintf(stderr, "Cannot set serial info\n");
-		return 0;
-	}*/
-	
+    
 	dxl_hal_close();
 	
 	gfByteTransTime = (float)((1000.0f / baudrate) * 12.0f);
@@ -140,6 +138,11 @@ void dxl_hal_clear(void)
 	tcflush(gSocket_fd, TCIFLUSH);
 }
 
+void dxl_hal_flush(void)
+{
+    tcdrain(gSocket_fd);
+}
+    
 int dxl_hal_tx( unsigned char *pPacket, int numPacket )
 {
 	return write(gSocket_fd, pPacket, numPacket);
