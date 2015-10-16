@@ -12,7 +12,7 @@ Nicolas Saugnier
 #include <linux/serial.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
-
+#include <errno.h>
 #include "dxl_hal.h"
 
 int	gSocket_fd	= -1;
@@ -39,46 +39,14 @@ int dxl_hal_open(int deviceIndex, float baudrate)
         }
     }
 
-	memset(&newtio, 0, sizeof(newtio));
-	newtio.c_cflag		= B1000000|CS8|CLOCAL|CREAD;
-	newtio.c_iflag		= IGNPAR;
-	newtio.c_oflag		= 0;
-	newtio.c_lflag		= 0;
-	newtio.c_cc[VTIME]	= 0;	// time-out ? (TIME * 0.1?) 0 : disable
-	newtio.c_cc[VMIN]	= 0;	// MIN ? read ? return ?? ?? ?? ?? ??
-
-	tcflush(gSocket_fd, TCIFLUSH);
-	tcsetattr(gSocket_fd, TCSANOW, &newtio);
-	
 	if(gSocket_fd == -1)
 		return 0;
-        
-	//USB2AX uses the CDC ACM driver for which these settings do not exist.
-    // However this code may also be used with Arbotix Pro... 
-	if(ioctl(gSocket_fd, TIOCGSERIAL, &serinfo) >= 0) {
-        fprintf(stderr, "Read serial info\n");
-        serinfo.flags &= ~ASYNC_SPD_MASK;
-        serinfo.flags |= ASYNC_SPD_CUST;
-        serinfo.custom_divisor = serinfo.baud_base / baudrate;
-        
-        if(ioctl(gSocket_fd, TIOCSSERIAL, &serinfo) < 0) {
-            fprintf(stderr, "Cannot set serial info\n");
-            return 0;
-        }
-	}
-    
-	dxl_hal_close();
+
 	
 	gfByteTransTime = (float)((1000.0f / baudrate) * 12.0f);
 	
 	memset(&newtio, 0, sizeof(newtio));
-	dxl_hal_close();
-	
-	if((gSocket_fd = open(dev_name, O_RDWR|O_NOCTTY|O_NONBLOCK)) < 0) {
-		fprintf(stderr, "device open error: %s\n", dev_name);
-		goto DXL_HAL_OPEN_ERROR;
-	}
-
+    // First try to set the baud rate directly.
 	newtio.c_cflag		= B1000000|CS8|CLOCAL|CREAD;
 	newtio.c_iflag		= IGNPAR;
 	newtio.c_oflag		= 0;
@@ -87,7 +55,34 @@ int dxl_hal_open(int deviceIndex, float baudrate)
 	newtio.c_cc[VMIN]	= 0;	// MIN ? read ? return ?? ?? ?? ?? ??
 
 	tcflush(gSocket_fd, TCIFLUSH);
-	tcsetattr(gSocket_fd, TCSANOW, &newtio);
+    
+	if (tcsetattr(gSocket_fd, TCSANOW, &newtio) < 0) {
+        printf("tcsetattr 1000000 failed try indirect %d\n\r", errno);
+
+        // Try doing it indirect by setting to 38400 and
+        // see if the USB driver supports setting non-standard
+                // Try back at 38400 and setting attribute...
+        newtio.c_cflag      = B38400|CS8|CLOCAL|CREAD;
+        if (tcsetattr(gSocket_fd, TCSANOW, &newtio) < 0) {
+            printf("tcsetattr failed %d\n\r", errno);
+            goto DXL_HAL_OPEN_ERROR;
+        }    
+        
+        // Get the settings...
+        if (ioctl(gSocket_fd, TIOCGSERIAL, &serinfo) < 0) {
+            printf("TIOCGSERIAL failed %d\n\r", errno);
+            goto DXL_HAL_OPEN_ERROR;
+        }
+        
+        serinfo.flags &= ~ASYNC_SPD_MASK;
+        serinfo.flags |= ASYNC_SPD_CUST;
+        serinfo.custom_divisor = serinfo.baud_base / baudrate;
+            
+        if(ioctl(gSocket_fd, TIOCSSERIAL, &serinfo) < 0) {
+            printf("TIOCSSERIAL failed %d\n\r", errno);
+            goto DXL_HAL_OPEN_ERROR;
+        }    
+    }
 	
 	return 1;
 
