@@ -205,7 +205,7 @@ WrapperSerial Serial = WrapperSerial();
 
 // other globals.
 word           g_wVoltage;
-char           g_aszCmdLine[80];
+char           g_aszCmdLine[120];
 uint8_t        g_iszCmdLine;
 boolean        g_fTrackServos = false;
 
@@ -233,11 +233,12 @@ extern void SetServoPosition(void) ;
 extern void SetServoID(void);
 extern void WaitForMoveToComplete(word wID);
 extern void GetServoPositions(void);
+extern void SyncReadServoPositions(void);
 extern void TrackServos(boolean fInit);
 extern void TrackPrintMinsMaxs(void);
 extern void PrintServoValues(void);
 extern void SetServosReturnDelay(void);
-
+extern void WriteServoRegisters(void);
 
 //====================================================================================================
 // SignalHandler - Try to free up things like servos if we abort.
@@ -291,6 +292,11 @@ int main(int argc, char *argv[])
                 g_count_servos  = (sizeof(g_hex_pin_table)/sizeof(g_hex_pin_table[0]));
                 g_servo_id_table = g_hex_pin_table;
                 g_servo_name_table = g_hex_pin_names;
+                if ((argc > 2) && ((*(argv[2]) == 'n') || (*(argv[2]) == 'N')))
+                {
+                    printf("No turret\n");
+                    g_count_servos -= 2;
+                }
             }
             else if ((c == 'q') || (c == 'Q')) 
             {
@@ -298,6 +304,11 @@ int main(int argc, char *argv[])
                 g_count_servos  = (sizeof(g_quad_pin_table)/sizeof(g_quad_pin_table[0]));
                 g_servo_id_table = g_quad_pin_table;
                 g_servo_name_table = g_quad_pin_names;
+                if ((argc > 2) && ((*(argv[2]) == 'n') || (*(argv[2]) == 'N')))
+                {
+                    printf("No turret\n");
+                    g_count_servos -= 2;
+                }
             }
             else if ((c == 'b') || (c == 'B')) 
             {
@@ -380,10 +391,12 @@ void loop() {
   Serial.println("2 - Set Servo position [<Servo>] <Position> [<Speed>]");
   Serial.println("3 - Set Servo Angle");
   Serial.println("4 - Get Servo Positions");
+  Serial.println("5 - Sync Read Servo positions");
   Serial.println("7 - Set Servos return delay");
   Serial.println("8 - Set ID: <old> <new>");
   Serial.println("9 - Print Servo Values");
   Serial.println("t - Toggle track Servos");
+  Serial.println("w - write <servo> <reg> <val> (can be multiple values...");
   Serial.println("h - hold [<sn>]");
   Serial.println("f - free [<sn>]"); 
   Serial.print(":");
@@ -407,6 +420,9 @@ void loop() {
     case '4':
       GetServoPositions();
       break;
+    case '5':
+      SyncReadServoPositions();
+      break;
     case '7' :
       SetServosReturnDelay();
       break;
@@ -423,6 +439,11 @@ void loop() {
     case 'h':
     case 'H':
       HoldOrFreeServos(1);
+      break;
+
+    case 'w':
+    case 'W':
+      WriteServoRegisters();
       break;
 
     case 't':
@@ -625,6 +646,91 @@ void GetServoPositions(void) {
     }    
     delay (100);
   }
+}
+//=======================================================================================
+void SyncReadServoPositions(void) {
+
+  unsigned long ulBefore;
+  unsigned long ulDelta;
+  int w;
+  
+#define AX_CMD_SYNC_READ      0x84
+#define PARAMETER             (5)  
+    // Setup DXL servo packet
+    // update each servo
+    dxl_set_txpacket_id(BROADCAST_ID);
+    dxl_set_txpacket_instruction(INST_SYNC_READ);
+    dxl_set_txpacket_parameter(0, AX_GOAL_POSITION_L);
+    dxl_set_txpacket_parameter(1, 2);
+    
+    for (int i = 0; i < g_count_servos; i++) {
+        dxl_set_txpacket_parameter(2+i, g_servo_id_table[i]);
+    }    
+        
+    dxl_set_txpacket_length(g_count_servos + 4);
+    
+    ulBefore = micros();
+    dxl_txrx_packet();
+    int result = dxl_get_result();   // don't care for now
+    ulDelta = micros() - ulBefore;
+    Serial.print("Sync Read ");
+    Serial.print(result, DEC);
+    Serial.print(" time: ");
+    Serial.println(ulDelta, DEC);
+
+    // Now print out results
+    for (int i = 0; i < g_count_servos; i++) {
+        Serial.print((uint8_t)g_servo_id_table[i], DEC);
+        Serial.print("(");
+        Serial.print(g_servo_name_table[i]);
+        Serial.print("):");
+        w = dxl_makeword(dxl_get_rxpacket_parameter(i*2), (int)dxl_get_rxpacket_parameter(i*2+1));
+        Serial.println(w, DEC);
+    }    
+    delay (100);
+}
+
+
+//=======================================================================================
+
+void WriteServoRegisters(void) {
+    unsigned long ulBefore;
+    unsigned long ulDelta;
+    word wID;
+    word wReg;
+    word w;
+    uint8_t cBytes = 0;
+    uint8_t ab[10];   // maximum 10 registers, probably never more than 2 or 3...
+
+    if (!FGetNextCmdNum(&wID))
+        return;    // no parameters so bail.
+
+    if (!FGetNextCmdNum(&wReg))
+        return;    // no parameters so bail.
+
+    while (FGetNextCmdNum(&w) && (cBytes < sizeof(ab))) {
+        ab[cBytes++] = w & 0xff;
+    }    
+    
+    if (! cBytes)
+        return;
+
+    // Now try to set the register(s)... 
+    dxl_set_txpacket_id(wID);
+    dxl_set_txpacket_instruction(INST_WRITE);
+    dxl_set_txpacket_parameter(0, wReg);
+    
+    for (int i = 0; i < cBytes; i++) {
+        dxl_set_txpacket_parameter(i+1, ab[i]);
+    }    
+        
+    dxl_set_txpacket_length(3 + cBytes);
+    
+    ulBefore = micros();
+    dxl_txrx_packet();
+    int result = dxl_get_result();   // don't care for now
+    ulDelta = micros() - ulBefore;
+    printf("Write Register %d %d %d Res=%d time=%lu\n", wID, wReg, cBytes, result, ulDelta);
 }
 
 //=======================================================================================
