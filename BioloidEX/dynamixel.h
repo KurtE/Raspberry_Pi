@@ -25,6 +25,7 @@ void dxl_set_txpacket_instruction( int instruction );
 #define INST_ACTION			(5)
 #define INST_RESET			(6)
 #define INST_SYNC_WRITE		(131)
+#define INST_SYNC_READ      (0x84)
 
 #define MAXNUM_TXPARAM		(150)
 void dxl_set_txpacket_parameter( int index, int value );
