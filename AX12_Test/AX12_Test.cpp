@@ -239,6 +239,7 @@ extern void TrackPrintMinsMaxs(void);
 extern void PrintServoValues(void);
 extern void SetServosReturnDelay(void);
 extern void WriteServoRegisters(void);
+extern void PanServoTest(void);
 
 //====================================================================================================
 // SignalHandler - Try to free up things like servos if we abort.
@@ -397,6 +398,7 @@ void loop() {
   Serial.println("9 - Print Servo Values");
   Serial.println("t - Toggle track Servos");
   Serial.println("w - write <servo> <reg> <val> (can be multiple values...");
+  Serial.println("p - Pan servo start end step");
   Serial.println("h - hold [<sn>]");
   Serial.println("f - free [<sn>]"); 
   Serial.print(":");
@@ -444,6 +446,11 @@ void loop() {
     case 'w':
     case 'W':
       WriteServoRegisters();
+      break;
+
+    case 'p':
+    case 'P':
+      PanServoTest();
       break;
 
     case 't':
@@ -691,7 +698,7 @@ void SyncReadServoPositions(void) {
 }
 
 
-//=======================================================================================
+//======================================================================================
 
 void WriteServoRegisters(void) {
     unsigned long ulBefore;
@@ -731,6 +738,68 @@ void WriteServoRegisters(void) {
     int result = dxl_get_result();   // don't care for now
     ulDelta = micros() - ulBefore;
     printf("Write Register %d %d %d Res=%d time=%lu\n", wID, wReg, cBytes, result, ulDelta);
+}
+
+//======================================================================================
+
+void PanServoTest(void) {
+    unsigned long ulBefore;
+    unsigned long ulDelta;
+    word wID;
+    int start_pos;
+    int  end_pos;
+    int Pos;
+    int cur_pos;
+    int cur_speed;
+    int servo_increment = 1;
+    int loop_count;
+    word w;
+    int dxl_result;
+
+    if (!FGetNextCmdNum(&wID))
+        return;    // no parameters so bail.
+
+    if (!FGetNextCmdNum(&w))
+        return;    // no parameters so bail.
+    start_pos = (int)w;
+
+    if (!FGetNextCmdNum(&w))
+        return;    // no parameters so bail.
+    end_pos = (int)w;
+
+    if (FGetNextCmdNum(&w))
+        servo_increment = (int)w;
+
+   
+    printf("Servo %d Pan test %d - %d step %d\n", wID, start_pos, end_pos, servo_increment);
+    
+    ax12SetRegister2(wID, AX_GOAL_POSITION_L, start_pos); 
+    delay(200); // give some time to get there!
+    
+    if (start_pos > end_pos)
+        servo_increment = -servo_increment; 
+
+    for (Pos = start_pos; ; Pos += servo_increment) {
+        if ( ((servo_increment > 0) && (Pos > end_pos))
+                || ((servo_increment < 0) && (Pos < end_pos)) )
+            break;
+        ax12SetRegister2(wID, AX_GOAL_POSITION_L, Pos);
+        dxl_result = dxl_get_result();
+
+        // Lets wait until we get there
+        for (loop_count = 0; loop_count < 50; loop_count++)
+        {
+            delay(10);
+            cur_pos = ax12GetRegister(wID, AX_PRESENT_POSITION_L, 2 );
+            if (cur_pos == Pos)
+                break;
+        } 
+        if (cur_pos != Pos) {
+            cur_speed = ax12GetRegister(wID, AX_PRESENT_SPEED_L, 2 );
+            printf("    Goal: %d Actual: %d Speed: %d res=%d\n", Pos, cur_pos, cur_speed, dxl_result);
+        }
+    }
+    printf("Completed\n\n");
 }
 
 //=======================================================================================
