@@ -240,6 +240,7 @@ extern void PrintServoValues(void);
 extern void SetServosReturnDelay(void);
 extern void WriteServoRegisters(void);
 extern void PanServoTest(void);
+extern void ScanAllServos(void);
 
 //====================================================================================================
 // SignalHandler - Try to free up things like servos if we abort.
@@ -399,6 +400,7 @@ void loop() {
   Serial.println("t - Toggle track Servos");
   Serial.println("w - write <servo> <reg> <val> (can be multiple values...");
   Serial.println("p - Pan servo start end step");
+  Serial.println("s - Scan for all servos");
   Serial.println("h - hold [<sn>]");
   Serial.println("f - free [<sn>]"); 
   Serial.print(":");
@@ -451,6 +453,11 @@ void loop() {
     case 'p':
     case 'P':
       PanServoTest();
+      break;
+
+    case 's':
+    case 'S':
+      ScanAllServos();
       break;
 
     case 't':
@@ -654,6 +661,27 @@ void GetServoPositions(void) {
     delay (100);
   }
 }
+
+//=======================================================================================
+void ScanAllServos(void) {
+
+  int w;
+  int bID;
+  printf("\nStart Servo Scan\n");
+  for (int i = 1; i < 254; i++) {
+    bID = ax12GetRegister(i, AX_ID, 1 );
+    if (bID == i) {
+        w = ax12GetRegister(g_servo_id_table[i], AX_PRESENT_POSITION_L, 2 );
+        printf("%d = %d\n\r", bID, w);
+    }
+    delay (10);
+  }
+  printf("Scan Complete\n\n");
+  
+}
+
+
+
 //=======================================================================================
 void SyncReadServoPositions(void) {
 
@@ -863,10 +891,14 @@ void TrackPrintMinsMaxs(void) {
 void PrintServoValues(void) {
 
   word wID;
+  word wEndReg;
   word w;
   if (!FGetNextCmdNum(&wID))
     return;
-  for (int i = 0; i < 50; i++) {
+  if (!FGetNextCmdNum(&wEndReg))
+    wEndReg = 50;
+
+  for (int i = 0; i < wEndReg; i++) {
     Serial.print(i, DEC);
     Serial.print(":");
     w = ax12GetRegister(wID, i, 1 );
@@ -875,7 +907,7 @@ void PrintServoValues(void) {
     if ((i%10) == 9)
       Serial.println("");
     Serial.flush();  // try to avoid any interrupts while processing.
-    delay(5);
+    delay(1);
   }    
 }
 //=======================================================================================

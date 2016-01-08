@@ -35,7 +35,13 @@ int dxl_hal_open(int deviceIndex, float baudrate)
         
         if((gSocket_fd = open(dev_name, O_RDWR|O_NOCTTY|O_NONBLOCK)) < 0) {
             fprintf(stderr, "device open error: %s\n", dev_name);
-            goto DXL_HAL_OPEN_ERROR;
+            
+            // Lets also try ttyUSBx to see if we have different board...
+            sprintf(dev_name, "/dev/ttyUSB%d", deviceIndex); // USB2AX is ttyACM
+            if((gSocket_fd = open(dev_name, O_RDWR|O_NOCTTY|O_NONBLOCK)) < 0) {
+                fprintf(stderr, "device open error: %s\n", dev_name);
+                goto DXL_HAL_OPEN_ERROR;
+            }
         }
     }
 
