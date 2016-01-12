@@ -132,10 +132,12 @@ void dxl_rx_packet()
 	{
 		gbRxGetLength = 0;
 		gbRxPacketLength = 6;
+        
+        // Only do on our first cll here... 
+        // Not sure if this will be needed here, but...
+        dxl_hal_flush();    // make sure everything is writen out
 	}
     
-    // Not sure if this will be needed here, but...
-    dxl_hal_flush();    // make sure everything is writen out
 	
 	nRead = dxl_hal_rx( (unsigned char*)&gbStatusPacket[gbRxGetLength], gbRxPacketLength - gbRxGetLength );
     

@@ -39,11 +39,18 @@
 #define SERVO1_SPECIAL
 
 #define MAX_SERVOS  32
+
 //=============================================================================
 // Define differnt robots..
 //=============================================================================
 
 // Constants
+// use for Track FSRs IDS 111 and 112
+#define FSR_FIRST_ID 111
+#define CNT_FSR_SERVOS 2
+#define FSR_FIRST_REG  0X1A
+#define CNT_FSR_VALS 10
+
 /* Servo IDs */
 // ID's for hexapod and quad
 #define     RF_COXA       2
@@ -200,7 +207,6 @@ const char     **g_servo_name_table = g_hex_pin_names;
 
 uint8_t        g_id_controller = AX_ID_DEVICE;
 
-/* IK Engine */
 WrapperSerial Serial = WrapperSerial();
 
 // other globals.
@@ -208,10 +214,15 @@ word           g_wVoltage;
 char           g_aszCmdLine[120];
 uint8_t        g_iszCmdLine;
 boolean        g_fTrackServos = false;
+boolean        g_fTrackFSRs = false;
+boolean        g_fSignaled = false;
 
 int            g_asPositionsPrev[MAX_SERVOS];
 int            g_asMins[MAX_SERVOS];
 int            g_asMaxs[MAX_SERVOS];
+
+// Variables used for FSR Tracking
+uint8_t         g_abFSRVals[CNT_FSR_SERVOS][CNT_FSR_VALS];
 
 
 // Values to use for servo position...
@@ -235,6 +246,7 @@ extern void WaitForMoveToComplete(word wID);
 extern void GetServoPositions(void);
 extern void SyncReadServoPositions(void);
 extern void TrackServos(boolean fInit);
+extern void TrackFSRs(boolean fInit);
 extern void TrackPrintMinsMaxs(void);
 extern void PrintServoValues(void);
 extern void SetServosReturnDelay(void);
@@ -248,17 +260,12 @@ extern void ScanAllServos(void);
 void SignalHandler(int sig){
     printf("Caught signal %d\n", sig);
 
-    // Stop motors if they are active
-    AllServosOff();
-    printf("All Servos off\n");
-    
-    // If on 200 we may have to turn power off...
-    if (g_id_controller== 200) {
-        ax12SetRegister(g_id_controller, AX_TORQUE_ENABLE, 0x0);
-        printf("Controller turn power off\n");
+    if (g_fSignaled) {
+        printf("Second signal Abort\n");
+        exit(1);
     }
-
-    exit(1); 
+    // Set global telling main to abort and return
+    g_fSignaled = true;
 
 }
       
@@ -324,13 +331,24 @@ int main(int argc, char *argv[])
 
 	setup();
     
-    for(;;) 
+    while (!g_fSignaled)
     {
     //--------------------------------------------------------------------------
     // Loop: the main arduino main Loop function
     //--------------------------------------------------------------------------
 		loop();
     }
+    
+    // Abort signaled...
+    AllServosOff();
+    printf("All Servos off\n");
+        
+    // If on 200 we may have to turn power off...
+    if (g_id_controller== 200) {
+        ax12SetRegister(g_id_controller, AX_TORQUE_ENABLE, 0x0);
+        printf("Controller turn power off\n");
+    }
+    exit(1); 
 }
 
 
@@ -401,6 +419,7 @@ void loop() {
   Serial.println("w - write <servo> <reg> <val> (can be multiple values...");
   Serial.println("p - Pan servo start end step");
   Serial.println("s - Scan for all servos");
+  Serial.println("r - HROS1 FSR track\n");
   Serial.println("h - hold [<sn>]");
   Serial.println("f - free [<sn>]"); 
   Serial.print(":");
@@ -471,6 +490,17 @@ void loop() {
         Serial.println("Tracking Off");
       TrackPrintMinsMaxs();
       break;
+    case 'r':
+    case 'R':
+      g_fTrackFSRs = !g_fTrackFSRs;
+      if (g_fTrackFSRs) {
+        Serial.println("FSR Tracking On");
+        TrackFSRs(true);  // call to initialize all of the positions.
+      }
+      else
+        Serial.println("FSR Tracking Off");
+      break;
+        
     }
   }
 }
@@ -482,7 +512,7 @@ uint8_t GetCommandLine(void) {
   g_iszCmdLine = 0;
   int cch;
 
-  for(;;) {
+  while (!g_fSignaled) {
     // throw away any thing less than CR character...
     cch = Serial.available();
     while (cch--) {
@@ -496,9 +526,12 @@ uint8_t GetCommandLine(void) {
     }
     if (g_fTrackServos)
       TrackServos(false);
+    else if (g_fTrackFSRs)
+      TrackFSRs(false);
     else
        delay(100);
   }
+  return 0; // We were signalled
 }
 
 //
@@ -670,9 +703,9 @@ void ScanAllServos(void) {
   printf("\nStart Servo Scan\n");
   for (int i = 1; i < 254; i++) {
     bID = ax12GetRegister(i, AX_ID, 1 );
-    if (bID == i) {
+    if (bID != -1) {
         w = ax12GetRegister(g_servo_id_table[i], AX_PRESENT_POSITION_L, 2 );
-        printf("%d = %d\n\r", bID, w);
+        printf("%d(%d) = %d\n\r", i, bID, w);
     }
     delay (10);
   }
@@ -869,6 +902,45 @@ void TrackServos(boolean fInit) {
     Serial.println();
 }
 
+//======================================================================================= 
+void TrackFSRs(boolean fInit) {
+    //Serial.print(".");
+    for (int fsr_servo_index = 0; fsr_servo_index < CNT_FSR_SERVOS; fsr_servo_index++) {
+        // Try to read in the FSR Values
+        dxl_set_txpacket_id(FSR_FIRST_ID + fsr_servo_index);
+        dxl_set_txpacket_instruction(INST_READ);
+        dxl_set_txpacket_parameter(0, FSR_FIRST_REG);
+        dxl_set_txpacket_parameter(1, CNT_FSR_VALS);
+        dxl_set_txpacket_length(4);
+        dxl_txrx_packet();
+        int result = dxl_get_result();   // don't care for now
+        
+        // Now see if anything changed. 
+        // Now print out results
+        uint8_t bChanged = 0;
+        if (result == COMM_RXSUCCESS) {
+            for (int i = 0; i < CNT_FSR_VALS; i++) {
+                if (dxl_get_rxpacket_parameter(i) != g_abFSRVals[fsr_servo_index][i]) {
+                    g_abFSRVals[fsr_servo_index][i] = dxl_get_rxpacket_parameter(i);
+                    bChanged = 1;
+                }
+            }
+            //printf("%d %d ", FSR_FIRST_ID + fsr_servo_index, result);
+            if (bChanged || fInit) {
+                printf("%d(%d) - %d %d %d %d - %d %d\n", FSR_FIRST_ID + fsr_servo_index, result,
+                    dxl_makeword(dxl_get_rxpacket_parameter(0), (int)dxl_get_rxpacket_parameter(1)),
+                    dxl_makeword(dxl_get_rxpacket_parameter(2), (int)dxl_get_rxpacket_parameter(3)),
+                    dxl_makeword(dxl_get_rxpacket_parameter(4), (int)dxl_get_rxpacket_parameter(5)),
+                    dxl_makeword(dxl_get_rxpacket_parameter(6), (int)dxl_get_rxpacket_parameter(7)),
+                    dxl_get_rxpacket_parameter(8), dxl_get_rxpacket_parameter(9));
+            }
+        }
+        else if (fInit) {
+            printf("fsr Servo %d status %d\n", FSR_FIRST_ID + fsr_servo_index, result);
+        }
+    }
+}    
+
 //=======================================================================================
 void TrackPrintMinsMaxs(void) {
   for (int i = 0; i < g_count_servos; i++) {
@@ -889,27 +961,52 @@ void TrackPrintMinsMaxs(void) {
 
 //=======================================================================================
 void PrintServoValues(void) {
-
-  word wID;
-  word wEndReg;
-  word w;
-  if (!FGetNextCmdNum(&wID))
-    return;
-  if (!FGetNextCmdNum(&wEndReg))
-    wEndReg = 50;
-
-  for (int i = 0; i < wEndReg; i++) {
-    Serial.print(i, DEC);
-    Serial.print(":");
-    w = ax12GetRegister(wID, i, 1 );
-    Serial.print(w, HEX);
-    Serial.print(" ");
-    if ((i%10) == 9)
-      Serial.println("");
-    Serial.flush();  // try to avoid any interrupts while processing.
-    delay(1);
-  }    
+    // Version that does one read ...
+    word wID;
+    word wEndReg;
+    word w;
+    if (!FGetNextCmdNum(&wID))
+        return;
+    if (!FGetNextCmdNum(&wEndReg))
+        wEndReg = 50;
+    
+    dxl_set_txpacket_id(wID);
+    dxl_set_txpacket_instruction(INST_READ);
+    dxl_set_txpacket_parameter(0, 0);
+    dxl_set_txpacket_parameter(1, wEndReg);
+    dxl_set_txpacket_length(4);
+    dxl_txrx_packet();
+    int result = dxl_get_result();   // don't care for now
+        
+    if (result == COMM_RXSUCCESS) {
+        for (int i = 0; i < wEndReg; i++) {
+            printf("%d:%x ", i, dxl_get_rxpacket_parameter(i));
+            if ((i%10) == 9)
+                printf("\n");
+        }
+        printf("\n");
+    } else {
+        printf("dxl bulk Read error: %d\n", result);
+        
+        for (int i = 0; i < wEndReg; i++) {
+            printf("%d:", i);
+            w = dxl_read_byte(wID, i);
+            result = dxl_get_result();
+            if (result != COMM_RXSUCCESS) {
+                w = dxl_read_byte(wID, i);
+                result = dxl_get_result();
+            }
+            if (result == COMM_RXSUCCESS)
+                printf("%x ", w);
+            else 
+                printf("** ");
+            if ((i%10) == 9)
+                Serial.println("");
+            Serial.flush();  // try to avoid any interrupts while processing.
+        }    
+    }  
 }
+
 //=======================================================================================
 
 
