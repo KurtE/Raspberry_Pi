@@ -961,6 +961,7 @@ void TrackPrintMinsMaxs(void) {
 
 //=======================================================================================
 void PrintServoValues(void) {
+#define MAX_BYTES_TO_READ 10
     // Version that does one read ...
     word wID;
     word wEndReg;
@@ -969,26 +970,37 @@ void PrintServoValues(void) {
         return;
     if (!FGetNextCmdNum(&wEndReg))
         wEndReg = 50;
-    
-    dxl_set_txpacket_id(wID);
-    dxl_set_txpacket_instruction(INST_READ);
-    dxl_set_txpacket_parameter(0, 0);
-    dxl_set_txpacket_parameter(1, wEndReg);
-    dxl_set_txpacket_length(4);
-    dxl_txrx_packet();
-    int result = dxl_get_result();   // don't care for now
+
+    // Lets try breaking this up into reads of up to 10 bytes each time... 
+    word first_byte_index = 0;
+    word bytes_to_read = 10;
+    int result;  
+    while (wEndReg) {
+        bytes_to_read = (wEndReg > MAX_BYTES_TO_READ)? MAX_BYTES_TO_READ : wEndReg;
         
-    if (result == COMM_RXSUCCESS) {
-        for (int i = 0; i < wEndReg; i++) {
-            printf("%d:%x ", i, dxl_get_rxpacket_parameter(i));
+        dxl_set_txpacket_id(wID);
+        dxl_set_txpacket_instruction(INST_READ);
+        dxl_set_txpacket_parameter(0, first_byte_index);
+        dxl_set_txpacket_parameter(1, bytes_to_read);
+        dxl_set_txpacket_length(4);
+        dxl_txrx_packet();
+        result = dxl_get_result();  
+           
+        if (result != COMM_RXSUCCESS) 
+            break;  // abort this loop...
+        for (int i = 0; i < bytes_to_read; i++) {
+            printf("%d:%x ", first_byte_index + i, dxl_get_rxpacket_parameter(i));
             if ((i%10) == 9)
                 printf("\n");
         }
-        printf("\n");
-    } else {
-        printf("dxl bulk Read error: %d\n", result);
+        first_byte_index += bytes_to_read;
+        wEndReg -= bytes_to_read;
+    }    
         
-        for (int i = 0; i < wEndReg; i++) {
+    if (result != COMM_RXSUCCESS)  {
+        printf("dxl bulk Read error: %d on index: %d\n", result, first_byte_index);
+        wEndReg += first_byte_index;        // lets restore the last item
+        for (int i = first_byte_index; i < wEndReg; i++) {
             printf("%d:", i);
             w = dxl_read_byte(wID, i);
             result = dxl_get_result();
@@ -1005,6 +1017,7 @@ void PrintServoValues(void) {
             Serial.flush();  // try to avoid any interrupts while processing.
         }    
     }  
+    printf("\n");
 }
 
 //=======================================================================================
