@@ -253,6 +253,7 @@ extern void SetServosReturnDelay(void);
 extern void WriteServoRegisters(void);
 extern void PanServoTest(void);
 extern void ScanAllServos(void);
+extern void IMUTest(void);
 
 //====================================================================================================
 // SignalHandler - Try to free up things like servos if we abort.
@@ -419,7 +420,8 @@ void loop() {
   Serial.println("w - write <servo> <reg> <val> (can be multiple values...");
   Serial.println("p - Pan servo start end step");
   Serial.println("s - Scan for all servos");
-  Serial.println("r - HROS1 FSR track\n");
+  Serial.println("r - HROS1 FSR track");
+  Serial.println("i - Test IMU");
   Serial.println("h - hold [<sn>]");
   Serial.println("f - free [<sn>]"); 
   Serial.print(":");
@@ -462,6 +464,11 @@ void loop() {
     case 'h':
     case 'H':
       HoldOrFreeServos(1);
+      break;
+
+    case 'i':
+    case 'I':
+      IMUTest();
       break;
 
     case 'w':
@@ -1021,7 +1028,84 @@ void PrintServoValues(void) {
 }
 
 //=======================================================================================
+// IMUTest - Arbotix-Pro or Teensy Pro, try looping reading IMU values and see when they 
+// change...
+//=======================================================================================
+void IMUTest(void) {
+  enum {
+    CM730_GYRO_Z_L                    = 38,
+    CM730_GYRO_Z_H                    = 39,
+    CM730_GYRO_Y_L                    = 40,
+    CM730_GYRO_Y_H                    = 41,
+    CM730_GYRO_X_L                    = 42,
+    CM730_GYRO_X_H                    = 43,
+    CM730_ACCEL_X_L                   = 44,
+    CM730_ACCEL_X_H                   = 45,
+    CM730_ACCEL_Y_L                   = 46,
+    CM730_ACCEL_Y_H                   = 47,
+    CM730_ACCEL_Z_L                   = 48,
+    CM730_ACCEL_Z_H                   = 49 };
+    
+  enum {
+    GYRO_Z = ((CM730_GYRO_Z_L-CM730_GYRO_Z_L)/2),
+    GYRO_Y = ((CM730_GYRO_Y_L-CM730_GYRO_Z_L)/2),
+    GYRO_X = ((CM730_GYRO_X_L-CM730_GYRO_Z_L)/2),
+    ACCEL_Z = ((CM730_ACCEL_Z_L-CM730_GYRO_Z_L)/2),
+    ACCEL_Y = ((CM730_ACCEL_Y_L-CM730_GYRO_Z_L)/2),
+    ACCEL_X = ((CM730_ACCEL_X_L-CM730_GYRO_Z_L)/2) };    
 
+    uint16_t awIMUVals[6] = {0};    // array of values
+
+    if (g_id_controller != 200) {
+        printf("*** Only supports CM730 like controllers ***\n\n");
+        return;
+    }
+
+    printf("\n\n**** Gyro(X, Y, Z), Accel(X, Y, Z) ***\n");
+    // Flush out any input characters that are waiting...
+    while(Serial.available() )
+        Serial.read();
+
+
+    // We will stay in this mode until we enter something on keyboard to abort...
+    while (! Serial.available()) {
+        dxl_set_txpacket_id(g_id_controller);
+        dxl_set_txpacket_instruction(INST_READ);
+        dxl_set_txpacket_parameter(0, CM730_GYRO_Z_L);
+        dxl_set_txpacket_parameter(1, (CM730_ACCEL_Z_H-CM730_GYRO_Z_L) + 1);
+        dxl_set_txpacket_length(4);
+        dxl_txrx_packet();
+        int result = dxl_get_result();  
+           
+        if (result != COMM_RXSUCCESS)  {
+            delay(5);   // give a delay
+            dxl_txrx_packet();  // try again?
+            result = dxl_get_result();  
+            if (result != COMM_RXSUCCESS)  {
+                printf("Abort TXRX Error=%d\n\n", result);
+                break;  // abort this loop...
+            }
+        }
+ #define FUDGE 5       
+        uint8_t fChanged = 0;
+        for (int i = 0; i < 6; i++) {
+            uint16_t w = dxl_makeword(dxl_get_rxpacket_parameter(i*2), (int)dxl_get_rxpacket_parameter(i*2+1));
+
+            if (abs((int)w - (int)awIMUVals[i]) > FUDGE) {
+                awIMUVals[i] = w;
+                fChanged = 1;
+            }
+        }
+        if (fChanged) {
+            printf("G(%u,%u,%u) A(%u, %u, %u)\n", awIMUVals[GYRO_X],  awIMUVals[GYRO_Y],  awIMUVals[GYRO_Z],
+                                                  awIMUVals[ACCEL_X],  awIMUVals[ACCEL_Y],  awIMUVals[ACCEL_Z]);   
+
+        }
+    }
+    delay(250);
+}
+
+//=======================================================================================
 
 
 
