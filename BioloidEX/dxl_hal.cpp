@@ -31,6 +31,7 @@ int	gSocket_fd	= -1;
 long	glStartTime	= 0;
 float	gfRcvWaitTime	= 0.0f;
 float	gfByteTransTime	= 0.0f;
+int 	g_use_tcdrain = 0;	// assume we don't need tcdrain. 
 
 int dxl_hal_open(int deviceIndex, float baudrate)
 {
@@ -63,7 +64,21 @@ int dxl_hal_open(int deviceIndex, float baudrate)
 				fprintf(stderr, "device open error: %s\n", dev_name);
 				goto DXL_HAL_OPEN_ERROR;
 			}
+			g_use_tcdrain = 1;	// FTDI device use tc Drain.
 		}
+	} else {
+		// DXL found see if FTDI as to know if we should use drain.
+		char szProcFD[20];
+		char szPath[30];
+		int ich;
+		sprintf(szProcFD, "/proc/self/fd/%d", gSocket_fd);
+		ich = readlink(szProcFD, szPath, sizeof(szPath));
+			
+		// Hack look for /dev/ttyUSB... actuall only look at USB    
+		if ((ich > 0) && (szPath[8]=='U') && (szPath[9]=='S')&& (szPath[10]=='B'))    
+			g_use_tcdrain = 1;		// FTDI use drain...
+		else    
+			g_use_tcdrain = 0;		// Others ACM S2.. Don't appear to.
 	}
 
 	if(gSocket_fd == -1)
@@ -163,7 +178,8 @@ int dxl_hal_set_baud( float baudrate )
 void dxl_hal_clear(void)
 {
 	digitalWrite(WPD_CLEAR_PIN, HIGH);
-	tcflush(gSocket_fd, TCIFLUSH);
+	if (g_use_tcdrain)
+		tcflush(gSocket_fd, TCIFLUSH);
 	digitalWrite(WPD_CLEAR_PIN, LOW);
 }
 
@@ -206,7 +222,9 @@ void dxl_hal_clear(void)
 
 void dxl_hal_flush(void)
 {
-//    tcdrain(gSocket_fd);
+	// Some controllers like FTDI are helped others hurt by call to drain.
+	if (g_use_tcdrain)
+		tcdrain(gSocket_fd);
 }
 int dxl_hal_tx( unsigned char *pPacket, int numPacket )
 {

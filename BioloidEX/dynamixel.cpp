@@ -82,18 +82,18 @@ void dxl_tx_packet()
 
 	TxNumByte = gbInstructionPacket[LENGTH] + 4;
 #ifdef DEBUG_PRINT
-    printf("TX(%d):", TxNumByte);
-    for (int i=0; i < TxNumByte; i++) 
-    {
-        printf(" %2x", gbInstructionPacket[i]);
-        if ((i & 0xff) == 0xff)
-            printf("\n");
-    }        
+	printf("TX(%d):", TxNumByte);
+	for (int i=0; i < TxNumByte; i++) 
+	{
+		printf(" %2x", gbInstructionPacket[i]);
+		if ((i & 0xff) == 0xff)
+			printf("\n");
+	}        
 #endif    
 	RealTxNumByte = dxl_hal_tx( (unsigned char*)gbInstructionPacket, TxNumByte );
 
 #ifdef DEBUG_PRINT
-    printf(" - %d\n", RealTxNumByte);
+	printf(" - %d\n", RealTxNumByte);
 #endif
 	if( TxNumByte != RealTxNumByte )
 	{
@@ -120,7 +120,7 @@ void dxl_rx_packet()
 	if( giBusUsing == 0 )
 		return;
 
-    // If Broadcast and not special command like SYNC read, we can bail from here. 
+	// If Broadcast and not special command like SYNC read, we can bail from here. 
 	if(( gbInstructionPacket[ID] == BROADCAST_ID ) && (gbInstructionPacket[INSTRUCTION] != INST_SYNC_READ ))
 	{
 		gbCommStatus = COMM_RXSUCCESS;
@@ -132,15 +132,15 @@ void dxl_rx_packet()
 	{
 		gbRxGetLength = 0;
 		gbRxPacketLength = 6;
-        
-        // Only do on our first cll here... 
-        // Not sure if this will be needed here, but...
-        dxl_hal_flush();    // make sure everything is writen out
+
+		// Some device like FTDI benifit from flushing stuff out, others do not.  
+		// Code in flush tries to determine.         
+		dxl_hal_flush();    // make sure everything is writen out
 	}
-    
+	
 	
 	nRead = dxl_hal_rx( (unsigned char*)&gbStatusPacket[gbRxGetLength], gbRxPacketLength - gbRxGetLength );
-    
+	
 	gbRxGetLength += nRead;
 	if( gbRxGetLength < gbRxPacketLength )
 	{
@@ -194,7 +194,7 @@ void dxl_rx_packet()
 	{
 		nRead = dxl_hal_rx( (unsigned char*)&gbStatusPacket[gbRxGetLength], gbRxPacketLength - gbRxGetLength );
 		gbRxGetLength += nRead;
-        
+		
 		if( gbRxGetLength < gbRxPacketLength )
 		{
 			gbCommStatus = COMM_RXWAITING;
@@ -229,14 +229,14 @@ void dxl_txrx_packet()
 		dxl_rx_packet();		
 	}while( gbCommStatus == COMM_RXWAITING );	
 #ifdef DEBUG_PRINT
-    printf("RX (%d %d):", gbRxGetLength, gbCommStatus);
-    for (int i=0; i < gbRxGetLength; i++) 
-    {
-        printf(" %2x", gbStatusPacket[i]);
-        if ((i & 0xf) == 0xf)
-            printf("\n");
-    }        
-    printf("\n");
+	printf("RX (%d %d):", gbRxGetLength, gbCommStatus);
+	for (int i=0; i < gbRxGetLength; i++) 
+	{
+		printf(" %2x", gbStatusPacket[i]);
+		if ((i & 0xf) == 0xf)
+			printf("\n");
+	}        
+	printf("\n");
 #endif    
 }
 
