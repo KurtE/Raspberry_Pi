@@ -20,6 +20,10 @@
 #define NUMSERVOS (NUMSERVOSPERLEG*CNT_LEGS)
 #endif
 
+#ifndef DXL_BAUD
+#define DXL_BAUD 1000000L
+#endif
+
 #define cPwmMult      128
 #define cPwmDiv       375  
 #define cPFConst      512    // half of our 1024 range
@@ -38,7 +42,6 @@ boolean g_fAXSpeedControl;      // flag to know which way we are doing output...
 word      g_awCurAXPos[NUMSERVOS];
 word      g_awGoalAXPos[NUMSERVOS];
 #endif
-
 #ifdef DBGSerial
 //#define DEBUG
 // Only allow debug stuff to be turned on if we have a debug serial port to output to...
@@ -89,8 +92,9 @@ static const byte cPinTable[]  = {
 #define FIRSTTURRETPIN   (CNT_LEGS*3)
 #endif
 // Not sure yet if I will use the controller class or not, but...
-BioloidControllerEx bioloid = BioloidControllerEx(1000000);
+BioloidControllerEx bioloid = BioloidControllerEx(DXL_BAUD);
 boolean g_fServosFree;    // Are the servos in a free state?
+uint8_t        g_id_controller = AX_ID_DEVICE;
 
 
 //============================================================================================
@@ -136,6 +140,29 @@ extern void DoPyPose(byte *psz);
 void ServoDriver::Init(void) {
     // First lets get the actual servo positions for all of our servos...
     g_fServosFree = true;
+
+    // Find out which servo controller we are using. 
+    word  wModel = ax12GetRegister(g_id_controller, AX_MODEL_NUMBER_L, 2 );
+
+    if (wModel == 0xffff) 
+    {
+        //Try 200 for CM730 like controller
+        g_id_controller = 200;
+        wModel = ax12GetRegister(g_id_controller, AX_MODEL_NUMBER_L, 2 );
+    }
+
+    if (wModel != 0xffff)
+        printf("Controller model %x on %x(%d)\n", wModel, g_id_controller,  g_id_controller);
+    else
+    {
+        printf("Controller not found\n");
+        g_id_controller = 0;    // say that we don't have this
+    }
+
+    // If on 200 we may have to turn servo power on...
+    if (g_id_controller== 200)
+        ax12SetRegister(g_id_controller, AX_TORQUE_ENABLE, 0x1);
+
 
     // We will duplicate and expand on the functionality of the bioloid readPose,
     // function.  In our loop we will set the IDs to that of our table, so they
@@ -185,9 +212,6 @@ void ServoDriver::Init(void) {
         }
     }
 
-#ifdef USB2AX_REG_VOLTAGE
-  ax12SetRegister(AX_ID_DEVICE, USB2AX_REG_VOLTAGE, cPinTable[FIRSTFEMURPIN]);
-#endif
   g_fAXSpeedControl = false;
 
 #ifdef OPT_GPPLAYER
@@ -202,9 +226,6 @@ void ServoDriver::Init(void) {
 void ServoDriver::Cleanup(void) {
     // Do any cleanup that the driver may need.
     printf("ServoDriver::Cleanup\n\r");
-#ifdef USB2AX_REG_VOLTAGE
-    ax12SetRegister(AX_ID_DEVICE, USB2AX_REG_VOLTAGE, 0);   // Turn off the voltage testing...
-#endif
     // Turn off all of the servo LEDS...  Maybe use broadcast?
     for (int iServo=0; iServo < NUMSERVOS; iServo++) {
         dxl_write_byte((cPinTable[iServo]), AX_LED, 0);
@@ -222,26 +243,12 @@ void ServoDriver::Cleanup(void) {
 #define VOLTAGE_MIN_TIME_BETWEEN_CALLS 250      // Max 4 times per second
 #define VOLTAGE_MAX_TIME_BETWEEN_CALLS 1000    // call at least once per second...
 #define VOLTAGE_TIME_TO_ERROR          3000    // Error out if no valid item is returned in 3 seconds...
+#define CM730_P_VOLTAGE                 50      // CM730ish devices have voltage on register 50
+
 word g_wLastVoltage = 0xffff;    // save the last voltage we retrieved...
 byte g_bLegVoltage = 0;		// what leg did we last check?
 unsigned long g_ulTimeLastBatteryVoltage = 0;
 
-#ifdef USB2AX_REG_VOLTAGE
-word ServoDriver::GetBatteryVoltage(void) {
-  // The USB2AX is caching informatation for us, so simply ask it for the data.  If this is still
-  // too much overhead, then we may want to only do this on timer...
-
-  // Lets cycle through the Tibia servos asking for voltages as they may be the ones doing the most work...
-  
-  word wVoltage = (word)ax12GetRegister(AX_ID_DEVICE, USB2AX_REG_VOLTAGE, 1);
-  if (wVoltage != g_ulTimeLastBatteryVoltage) {
-    printf("Voltage: %d\n\r", wVoltage);
-    g_ulTimeLastBatteryVoltage = wVoltage;
-  }  
-  return ((wVoltage != (word)-1)? wVoltage*10 : (word)-1);
-    
-}
-#else
 
 // 
 word ServoDriver::GetBatteryVoltage(void) {
@@ -250,11 +257,16 @@ word ServoDriver::GetBatteryVoltage(void) {
     // Lets cycle through the Tibia servos asking for voltages as they may be the ones doing the most work...
     unsigned long uldt = millis() - g_ulTimeLastBatteryVoltage;
     if ((uldt > VOLTAGE_MAX_TIME_BETWEEN_CALLS) || ((uldt > VOLTAGE_MIN_TIME_BETWEEN_CALLS && !bioloid.interpolating()))) {
+        word wVoltage;
+        if (g_id_controller== 200)  // we can simply ask the controller for its voltage
+            wVoltage = (word)ax12GetRegister(g_id_controller, CM730_P_VOLTAGE, 1);
+        else {
+            wVoltage = (word)ax12GetRegister(cPinTable[FIRSTFEMURPIN /*+ g_bLegVoltage++*/], AX_PRESENT_VOLTAGE, 1);
 
-        word wVoltage = (word)ax12GetRegister(cPinTable[FIRSTFEMURPIN /*+ g_bLegVoltage++*/], AX_PRESENT_VOLTAGE, 1);
-        if (g_bLegVoltage == CNT_LEGS)
-            g_bLegVoltage = 0;
-
+            if (g_bLegVoltage == CNT_LEGS)
+                g_bLegVoltage = 0;
+        }
+        
         if (wVoltage && (wVoltage != 0xffff))  {
             g_ulTimeLastBatteryVoltage = millis();
 
@@ -269,7 +281,6 @@ word ServoDriver::GetBatteryVoltage(void) {
     }
     return ((g_wLastVoltage != (word)-1)? g_wLastVoltage*10 : (word)-1);
 }
-#endif
 
 //--------------------------------------------------------------------
 //[GP PLAYER]

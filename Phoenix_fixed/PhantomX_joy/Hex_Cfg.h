@@ -89,6 +89,7 @@
 #define XBEE_BAUD        38400
 #define DISP_VOLTAGE    // User wants the Battery voltage to be displayed...
 #define DISP_VOLTAGE_TIME  1000  // how often to check and report in millis
+#define DXL_BAUD		2000000L	// defaults to 1000000
 //--------------------------------------------------------------------
 //[Arbotix Pin Numbers]
 #define SOUND_PIN    1 //0xff        // Tell system we have no IO pin...
@@ -138,8 +139,8 @@
 #define cLFFemurPin     3   //Front Left leg Hip Vertical
 #define cLFTibiaPin     5   //Front Left leg Knee
 
-#define cTurretRotPin  20   // Turret Rotate Pin
-#define cTurretTiltPin 21  // Turret Tilt pin
+//#define cTurretRotPin  20   // Turret Rotate Pin
+//#define cTurretTiltPin 21  // Turret Tilt pin
 
 //--------------------------------------------------------------------
 //[MIN/MAX ANGLES] - Start off assume same as Phoenix...
