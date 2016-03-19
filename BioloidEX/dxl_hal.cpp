@@ -15,6 +15,18 @@ Nicolas Saugnier
 #include <errno.h>
 #include "dxl_hal.h"
 
+//#define DEBUG_WIRINGPI
+#ifdef DEBUG_WIRINGPI
+#include <wiringPi.h>
+#define WPD_WRITE_PIN       0
+#define WPD_READ_PIN        1
+#define WPD_READ_DATA_PIN   2
+#define WPD_FLUSH_PIN       3
+#define WPD_CLEAR_PIN       4
+unsigned char wpd_readDataToggle = 0;
+#endif
+
+
 int	gSocket_fd	= -1;
 long	glStartTime	= 0;
 float	gfRcvWaitTime	= 0.0f;
@@ -26,24 +38,33 @@ int dxl_hal_open(int deviceIndex, float baudrate)
 	struct serial_struct serinfo;
 	char dev_name[20] = "/dev/ttyDXL";
 
-    // Build in support to explit device - /dev/ttyDXL
+#ifdef DEBUG_WIRINGPI
+	wiringPiSetup () ;
+	pinMode (WPD_WRITE_PIN, OUTPUT) ;
+	pinMode (WPD_READ_PIN, OUTPUT) ;
+	pinMode (WPD_READ_DATA_PIN, OUTPUT) ;
+	pinMode (WPD_FLUSH_PIN, OUTPUT) ;
+	pinMode (WPD_CLEAR_PIN, OUTPUT) ;
+
+#endif
+	// Build in support to explit device - /dev/ttyDXL
 	dxl_hal_close();    // Make sure any previous handle is closed
-    
+	
 	if((gSocket_fd = open(dev_name, O_RDWR|O_NOCTTY|O_NONBLOCK)) < 0) {
-        // We did not find our explicit one, lets try the standard default USB2AX file name
-        sprintf(dev_name, "/dev/ttyACM%d", deviceIndex); // USB2AX is ttyACM
-        
-        if((gSocket_fd = open(dev_name, O_RDWR|O_NOCTTY|O_NONBLOCK)) < 0) {
-            fprintf(stderr, "device open error: %s\n", dev_name);
-            
-            // Lets also try ttyUSBx to see if we have different board...
-            sprintf(dev_name, "/dev/ttyUSB%d", deviceIndex); // USB2AX is ttyACM
-            if((gSocket_fd = open(dev_name, O_RDWR|O_NOCTTY|O_NONBLOCK)) < 0) {
-                fprintf(stderr, "device open error: %s\n", dev_name);
-                goto DXL_HAL_OPEN_ERROR;
-            }
-        }
-    }
+		// We did not find our explicit one, lets try the standard default USB2AX file name
+		sprintf(dev_name, "/dev/ttyACM%d", deviceIndex); // USB2AX is ttyACM
+		
+		if((gSocket_fd = open(dev_name, O_RDWR|O_NOCTTY|O_NONBLOCK)) < 0) {
+			fprintf(stderr, "device open error: %s\n", dev_name);
+			
+			// Lets also try ttyUSBx to see if we have different board...
+			sprintf(dev_name, "/dev/ttyUSB%d", deviceIndex); // USB2AX is ttyACM
+			if((gSocket_fd = open(dev_name, O_RDWR|O_NOCTTY|O_NONBLOCK)) < 0) {
+				fprintf(stderr, "device open error: %s\n", dev_name);
+				goto DXL_HAL_OPEN_ERROR;
+			}
+		}
+	}
 
 	if(gSocket_fd == -1)
 		return 0;
@@ -52,8 +73,11 @@ int dxl_hal_open(int deviceIndex, float baudrate)
 	gfByteTransTime = (float)((1000.0f / baudrate) * 12.0f);
 	
 	memset(&newtio, 0, sizeof(newtio));
-    // First try to set the baud rate directly.
-	newtio.c_cflag		= B1000000|CS8|CLOCAL|CREAD;
+	// First try to set the baud rate directly.
+	if (baudrate == 2000000)
+		newtio.c_cflag          = B2000000|CS8|CLOCAL|CREAD;
+	else
+		newtio.c_cflag		= B1000000|CS8|CLOCAL|CREAD;
 	newtio.c_iflag		= IGNPAR;
 	newtio.c_oflag		= 0;
 	newtio.c_lflag		= 0;
@@ -61,34 +85,34 @@ int dxl_hal_open(int deviceIndex, float baudrate)
 	newtio.c_cc[VMIN]	= 0;	// MIN ? read ? return ?? ?? ?? ?? ??
 
 	tcflush(gSocket_fd, TCIFLUSH);
-    
+	
 	if (tcsetattr(gSocket_fd, TCSANOW, &newtio) < 0) {
-        printf("tcsetattr 1000000 failed try indirect %d\n\r", errno);
+		printf("tcsetattr 1000000 failed try indirect %d\n\r", errno);
 
-        // Try doing it indirect by setting to 38400 and
-        // see if the USB driver supports setting non-standard
-                // Try back at 38400 and setting attribute...
-        newtio.c_cflag      = B38400|CS8|CLOCAL|CREAD;
-        if (tcsetattr(gSocket_fd, TCSANOW, &newtio) < 0) {
-            printf("tcsetattr failed %d\n\r", errno);
-            goto DXL_HAL_OPEN_ERROR;
-        }    
-        
-        // Get the settings...
-        if (ioctl(gSocket_fd, TIOCGSERIAL, &serinfo) < 0) {
-            printf("TIOCGSERIAL failed %d\n\r", errno);
-            goto DXL_HAL_OPEN_ERROR;
-        }
-        
-        serinfo.flags &= ~ASYNC_SPD_MASK;
-        serinfo.flags |= ASYNC_SPD_CUST;
-        serinfo.custom_divisor = serinfo.baud_base / baudrate;
-            
-        if(ioctl(gSocket_fd, TIOCSSERIAL, &serinfo) < 0) {
-            printf("TIOCSSERIAL failed %d\n\r", errno);
-            goto DXL_HAL_OPEN_ERROR;
-        }    
-    }
+		// Try doing it indirect by setting to 38400 and
+		// see if the USB driver supports setting non-standard
+				// Try back at 38400 and setting attribute...
+		newtio.c_cflag      = B38400|CS8|CLOCAL|CREAD;
+		if (tcsetattr(gSocket_fd, TCSANOW, &newtio) < 0) {
+			printf("tcsetattr failed %d\n\r", errno);
+			goto DXL_HAL_OPEN_ERROR;
+		}    
+		
+		// Get the settings...
+		if (ioctl(gSocket_fd, TIOCGSERIAL, &serinfo) < 0) {
+			printf("TIOCGSERIAL failed %d\n\r", errno);
+			goto DXL_HAL_OPEN_ERROR;
+		}
+		
+		serinfo.flags &= ~ASYNC_SPD_MASK;
+		serinfo.flags |= ASYNC_SPD_CUST;
+		serinfo.custom_divisor = serinfo.baud_base / baudrate;
+			
+		if(ioctl(gSocket_fd, TIOCSSERIAL, &serinfo) < 0) {
+			printf("TIOCSSERIAL failed %d\n\r", errno);
+			goto DXL_HAL_OPEN_ERROR;
+		}    
+	}
 	
 	return 1;
 
@@ -110,9 +134,9 @@ int dxl_hal_set_baud( float baudrate )
 	
 	if(gSocket_fd == -1)
 		return 0;
-    
+	
 	//USB2AX uses the CDC ACM driver for which these settings do not exist.
-    /*
+	/*
 	if(ioctl(gSocket_fd, TIOCGSERIAL, &serinfo) < 0) {
 		fprintf(stderr, "Cannot get serial info\n");
 		return 0;
@@ -134,6 +158,47 @@ int dxl_hal_set_baud( float baudrate )
 	return 1;
 }
 
+	
+#ifdef DEBUG_WIRINGPI
+void dxl_hal_clear(void)
+{
+	digitalWrite(WPD_CLEAR_PIN, HIGH);
+	tcflush(gSocket_fd, TCIFLUSH);
+	digitalWrite(WPD_CLEAR_PIN, LOW);
+}
+
+void dxl_hal_flush(void)
+{
+	digitalWrite(WPD_FLUSH_PIN, HIGH);
+#if 0
+	tcdrain(gSocket_fd);
+#endif
+	digitalWrite(WPD_FLUSH_PIN, LOW);
+}
+int dxl_hal_tx( unsigned char *pPacket, int numPacket )
+{
+	int iRet;
+	digitalWrite(WPD_WRITE_PIN, HIGH);
+	iRet = write(gSocket_fd, pPacket, numPacket);
+	digitalWrite(WPD_WRITE_PIN, LOW);
+	return iRet;
+}
+
+int dxl_hal_rx( unsigned char *pPacket, int numPacket )
+{
+	memset(pPacket, 0, numPacket);
+	int iRet;
+	digitalWrite(WPD_READ_PIN, HIGH);
+	iRet = read(gSocket_fd, pPacket, numPacket);
+	digitalWrite(WPD_READ_PIN, LOW);
+	if (iRet > 0) {
+		wpd_readDataToggle ^= 1;
+		digitalWrite(WPD_READ_DATA_PIN, wpd_readDataToggle);
+	}
+	return iRet;
+}
+
+#else
 void dxl_hal_clear(void)
 {
 	tcflush(gSocket_fd, TCIFLUSH);
@@ -141,9 +206,8 @@ void dxl_hal_clear(void)
 
 void dxl_hal_flush(void)
 {
-    tcdrain(gSocket_fd);
+//    tcdrain(gSocket_fd);
 }
-    
 int dxl_hal_tx( unsigned char *pPacket, int numPacket )
 {
 	return write(gSocket_fd, pPacket, numPacket);
@@ -154,6 +218,7 @@ int dxl_hal_rx( unsigned char *pPacket, int numPacket )
 	memset(pPacket, 0, numPacket);
 	return read(gSocket_fd, pPacket, numPacket);
 }
+#endif
 
 static inline long myclock()
 {
