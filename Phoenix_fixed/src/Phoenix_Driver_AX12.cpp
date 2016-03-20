@@ -568,7 +568,7 @@ void SetRegOnAllServos(uint8_t bReg, uint8_t bVal)
 
     dxl_set_txpacket_parameter(0, bReg);    // which register
     dxl_set_txpacket_parameter(1, 1);       // 1 byte
-    dxl_set_txpacket_length(2*NUMSERVOS+3);
+    dxl_set_txpacket_length(2*NUMSERVOS+4);
     
     for (byte i = 0; i < NUMSERVOS; i++) {
         dxl_set_txpacket_parameter(2+i*2, (cPinTable[i]));       // 1 byte
