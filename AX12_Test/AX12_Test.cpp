@@ -35,7 +35,7 @@
 // Uncomment the next line if building for a Quad instead of a Hexapod.
 //#define HROS1_MODE
 //#define QUAD_MODE
-#define TURRET
+//#define TURRET
 #define SERVO1_SPECIAL
 
 #define MAX_SERVOS  32
@@ -366,7 +366,7 @@ void setup() {
     // First lets try to see what controller we are using, lets first try id 253 which is default USB2AX
     delay(1000);
     word  wModel = ax12GetRegister(g_id_controller, AX_MODEL_NUMBER_L, 2 );
-
+    printf("id: %x wModel: %x\n", g_id_controller, wModel);
     if (wModel == 0xffff) 
     {
         //Try 200 for CM730 like controller
@@ -733,7 +733,7 @@ void SyncReadServoPositions(void) {
 #define PARAMETER             (5)  
     // Setup DXL servo packet
     // update each servo
-    dxl_set_txpacket_id(BROADCAST_ID);
+    dxl_set_txpacket_id(g_id_controller);
     dxl_set_txpacket_instruction(INST_SYNC_READ);
     dxl_set_txpacket_parameter(0, AX_GOAL_POSITION_L);
     dxl_set_txpacket_parameter(1, 2);
