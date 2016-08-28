@@ -17,16 +17,16 @@ MAIN_DEPS:= $(notdir $(subst .cpp,.d,$(SOURCES)))
 #~~~~~~~~~~~~~~~~~~~~ Include Directories ~~~~~~~~~~~~~~~~~~~~
 ifeq ($(OSTYPE),linux-gnueabi)
 #BBBk
-INCLUDE_DIRS = -I. -I../src/ -I../../library -I../../$(BIOLOIDEX) 
+INCLUDE_DIRS = -I. -I../src/ -I../../library -I../../library_extras -I../../$(BIOLOIDEX) 
 else
-INCLUDE_DIRS = -I. -I../src/ -I../../library -I../../$(BIOLOIDEX) -I/usr/include/espeak
+INCLUDE_DIRS = -I. -I../src/ -I../../library -I../../library_extras -I../../$(BIOLOIDEX) -I/usr/include/espeak
 endif
 
 #~~~~~~~~~~~~~~~~~~~~ Library Directories ~~~~~~~~~~~~~~~~~~~~
 ifeq ($(OSTYPE),linux-gnueabi)
-LIBRARY_DIRS = -L/usr/lib/arm-angstrom-linux-gnueabi/4.7.3 -L../../library -L../$(BIOLOIDEX) -L../library
+LIBRARY_DIRS = -L/usr/lib/arm-angstrom-linux-gnueabi/4.7.3 -L../../library -L../../library_extras -L../$(BIOLOIDEX) -L../library
 else
-LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../../library -L../../$(BIOLOIDEX) -L../library
+LIBRARY_DIRS = -L/usr/lib/arm-linux-gnueabihf -L../../library -L../../library_extras -L../../$(BIOLOIDEX) -L../library
 endif
 
 #~~~~~~~~~~~~~~~~~~~~ Compiler Options ~~~~~~~~~~~~~~~~~~~~
@@ -34,16 +34,17 @@ COMPILE_OPTS = -Wall -pedantic -g -O2 -fno-rtti -Wno-write-strings
 
 #~~~~~~~~~~~~~~~~~~~~ Linker Options ~~~~~~~~~~~~~~~~~~~~
 ifeq ($(OSTYPE),linux-gnueabi)
-LDFLAGS = $(LIBRARY_DIRS) -lpthread -lBioloidEX -lArduinoPort -lasound -lespeak -lrt
+LDFLAGS = $(LIBRARY_DIRS) -lpthread -lBioloidEX -lArduinoPort -lPortExtras -l-lasound -lespeak -lrt
 else
-LDFLAGS = $(LIBRARY_DIRS) -lpthread -lBioloidEX -lArduinoPort -lespeak -lasound -lrt
+LDFLAGS = $(LIBRARY_DIRS) -lpthread -lBioloidEX -lArduinoPort -lPortExtras -lespeak -lasound -lrt
 endif
 
 #~~~~~~~~~~~~~~~~~~~~ Toolchain Prefix ~~~~~~~~~~~~~~~~~~~~
 ifeq ($(OSTYPE),linux-gnueabi)
 TCHAIN_PREFIX=arm-angstrom-linux-gnueabi-
 else
-TCHAIN_PREFIX=arm-linux-gnueabihf-
+TCHAIN_PREFIX=
+#TCHAIN_PREFIX=arm-linux-gnueabihf-
 endif
 #TCHAIN_PREFIX=x86_64-linux-gnu-
 
@@ -51,7 +52,7 @@ CXX = $(TCHAIN_PREFIX)g++
 CXXFLAGS = $(COMPILE_OPTS) $(INCLUDE_DIRS)
 
 #~~~~~~~~~~~~~~~~~~~~ all ~~~~~~~~~~~~~~~~~~~~
-all: LIBRARY BioloidEX begin gccversion build end
+all: LIBRARY LIBRARY_EXTRAS BioloidEX begin gccversion build end
 
 #~~~~~~~~~~~~~~~~~~~~ library ~~~~~~~~~~~~~~~~~~~~
 BioloidEX:
@@ -60,6 +61,10 @@ BioloidEX:
 #~~~~~~~~~~~~~~~~~~~~ library ~~~~~~~~~~~~~~~~~~~~
 LIBRARY:
 	cd ../../library; $(MAKE)
+
+#~~~~~~~~~~~~~~~~~~~~ library ~~~~~~~~~~~~~~~~~~~~
+LIBRARY_EXTRAS:
+	cd ../../library_extras; $(MAKE)
 
 #~~~~~~~~~~~~~~~~~~~~ build ~~~~~~~~~~~~~~~~~~~~
 build: $(MAIN_OUT)

@@ -36,7 +36,8 @@ ifeq ($(OSTYPE),Edison)
 #Edison hard coded OSTYPE
 TCHAIN_PREFIX=i586-poky-linux-
 else
-TCHAIN_PREFIX=arm-linux-gnueabihf-
+#TCHAIN_PREFIX=arm-linux-gnueabihf-
+TCHAIN_PREFIX=
 endif
 endif
 #TCHAIN_PREFIX=x86_64-linux-gnu-
