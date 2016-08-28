@@ -1,28 +1,21 @@
 #try to create a static library of code for me to use for different programs
 #~~~~~~~~~~~~~~~~~~~~ Output File Name ~~~~~~~~~~~~~~~~~~~~
-MAIN_OUT = libArduinoPort.a
+MAIN_OUT = libPortExtras.a
 
 #~~~~~~~~~~~~~~~~~~~~ Source Files ~~~~~~~~~~~~~~~~~~~~
 COMMON_SOURCES = \
-		Wiring.cpp \
-		Print.cpp \
-		Stream.cpp \
-		WrapperSerial.cpp \
-		CommanderEx.cpp \
-		diyxbee.cpp \
-		PWM.cpp \
-        JoystickController.cpp \
-		RoboClaw.cpp 
+		msound.cpp \
+		speak.cpp \
+		SDRFunctions.cpp 
 
-SOURCES = $(COMMON_SOURCES)
+SOURCES = $(COMMON_SOURCES) 
 
 MAIN_OBJS:= $(subst .cpp,.o,$(SOURCES))
 
 MAIN_DEPS:= $(subst .cpp,.d,$(SOURCES))
 
 #~~~~~~~~~~~~~~~~~~~~ Include Directories ~~~~~~~~~~~~~~~~~~~~
-INCLUDE_DIRS = -I. 
-
+INCLUDE_DIRS = -I. -I../library -I/usr/include/espeak -I/user/include/alsa
 
 #~~~~~~~~~~~~~~~~~~~~ Library Directories ~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~~~~~~~~~~~~~~ Compiler Options ~~~~~~~~~~~~~~~~~~~~
@@ -31,19 +24,7 @@ COMPILE_OPTS = -Wall -pedantic -g -O2 -fno-rtti -Wno-write-strings
 #~~~~~~~~~~~~~~~~~~~~ Linker Options ~~~~~~~~~~~~~~~~~~~~
 
 #~~~~~~~~~~~~~~~~~~~~ Toolchain Prefix ~~~~~~~~~~~~~~~~~~~~
-ifeq ($(OSTYPE),linux-gnueabi)
-#BBBk
-TCHAIN_PREFIX=arm-angstrom-linux-gnueabi-
-
-else
-ifeq ($(OSTYPE),Edison)
-#Edison hard coded OSTYPE
-TCHAIN_PREFIX=i586-poky-linux-
-else
 TCHAIN_PREFIX=
-endif
-endif
-#TCHAIN_PREFIX=x86_64-linux-gnu-
 
 CXX = $(TCHAIN_PREFIX)g++
 CXXFLAGS = $(COMPILE_OPTS) $(INCLUDE_DIRS)
