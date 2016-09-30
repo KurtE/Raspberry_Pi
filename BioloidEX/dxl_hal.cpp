@@ -6,6 +6,7 @@ Nicolas Saugnier
 
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <termios.h>
@@ -38,6 +39,7 @@ int dxl_hal_open(int deviceIndex, float baudrate)
 	struct termios newtio;
 	struct serial_struct serinfo;
 	char dev_name[20] = "/dev/ttyDXL";
+	uint32_t int_baud = baudrate;
 
 #ifdef DEBUG_WIRINGPI
 	wiringPiSetup () ;
@@ -89,10 +91,26 @@ int dxl_hal_open(int deviceIndex, float baudrate)
 	
 	memset(&newtio, 0, sizeof(newtio));
 	// First try to set the baud rate directly.
-	if (baudrate == 2000000)
-		newtio.c_cflag          = B2000000|CS8|CLOCAL|CREAD;
-	else
-		newtio.c_cflag		= B1000000|CS8|CLOCAL|CREAD;
+	switch (int_baud) {
+		case 4000000:
+			newtio.c_cflag		= B4000000|CS8|CLOCAL|CREAD;
+			break;
+		case 3500000:
+			newtio.c_cflag		= B3500000|CS8|CLOCAL|CREAD;
+			break;
+		case 3000000:
+			newtio.c_cflag		= B3000000|CS8|CLOCAL|CREAD;
+			break;
+		case 2500000:
+			newtio.c_cflag		= B2500000|CS8|CLOCAL|CREAD;
+			break;
+		case 2000000:
+			newtio.c_cflag		= B2000000|CS8|CLOCAL|CREAD;
+			break;
+		default:
+			newtio.c_cflag		= B1000000|CS8|CLOCAL|CREAD;
+			break;
+	}
 	newtio.c_iflag		= IGNPAR;
 	newtio.c_oflag		= 0;
 	newtio.c_lflag		= 0;

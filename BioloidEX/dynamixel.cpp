@@ -20,18 +20,21 @@ unsigned char gbRxGetLength = 0;
 int gbCommStatus = COMM_RXSUCCESS;
 int giBusUsing = 0;
 
-
-int dxl_initialize( int devIndex, int baudnum )
+int dxl_initializeBaud( int devIndex, float baudrate ) 
 {
-	float baudrate;	
-	baudrate = 2000000.0f / (float)(baudnum + 1);
-	
 	if( dxl_hal_open(devIndex, baudrate) == 0 )
 		return 0;
 
 	gbCommStatus = COMM_RXSUCCESS;
 	giBusUsing = 0;
 	return 1;
+
+}
+int dxl_initialize( int devIndex, int baudnum )
+{
+	float baudrate;	
+	baudrate = 2000000.0f / (float)(baudnum + 1);
+	return dxl_initializeBaud(devIndex, baudrate);	
 }
 
 void dxl_terminate()

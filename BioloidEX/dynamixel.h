@@ -10,6 +10,7 @@ extern "C" {
 
 ///////////// device control methods ////////////////////////
 int dxl_initialize( int devIndex, int baudnum );
+int dxl_initializeBaud( int devIndex, float baudrate ); 
 void dxl_terminate(void);
 
 

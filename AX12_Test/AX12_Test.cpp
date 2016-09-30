@@ -428,7 +428,8 @@ void setup() {
     if (dxl_initialize(g_comport_index, 1) == 0)
 #else
     Serial.begin();  // start off the serial port.
-    if(dxl_initialize(0, 1) == 0)
+    //if(dxl_initialize(0, 0) == 0)
+    if(dxl_initializeBaud(0, 4000000.0) == 0)
 #endif
     {
         printf("Failed to open USBDynamixel\n");
