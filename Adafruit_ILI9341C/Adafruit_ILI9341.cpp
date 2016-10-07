@@ -17,7 +17,7 @@
 #include <limits.h>
 
 // Test to see if not needing malloc/free will speed up SPI transfers
-#define MRAA_SPI_TRANSFER_BUF
+#define MRAA_SPI_TRANSFER_BUF 1
 #ifdef MRAA_SPI_TRANSFER_BUF
 #include <sys/ioctl.h>
 #include <linux/spi/spidev.h>
@@ -27,9 +27,16 @@
 #endif
 
 //Hardware SPI version. 
-#define X86_BUFFSIZE 128
+#define X86_BUFFSIZE  (2048) //128
 #define SPI_FREQ 8000000
 
+// BUGBUG:: Playing with MRAA/SPIDEV to see if delay works?
+#define CS_DELAY 0
+#if CS_DELAY
+#define TRANSFER_BUF(spi, tx, rx, cnt) mraa_spi_transfer_buf_cs_delay(spi, tx, rx, cnt, CS_DELAY)
+#else
+#define TRANSFER_BUF(spi, tx, rx, cnt) mraa_spi_transfer_buf(spi, tx, rx, cnt)
+#endif
 
 // Constructor when using hardware SPI.  Faster, but must use SPI pins
 // specific to each board type (e.g. 11,13 for Uno, 51,52 for Mega, etc.)
@@ -49,7 +56,8 @@ void inline Adafruit_ILI9341::spiwrite(uint8_t c) {
   //Serial.print("0x"); Serial.print(c, HEX); Serial.print(", ");
 
   // transaction sets mode
-  mraa_spi_write(SPI, c);
+//  mraa_spi_write(SPI, c);
+  TRANSFER_BUF(SPI, &c, NULL, 1);
 }
 
 void inline Adafruit_ILI9341::spiwrite16(uint16_t c) {
@@ -58,7 +66,7 @@ void inline Adafruit_ILI9341::spiwrite16(uint16_t c) {
   txData[1] = c & 0xff; 
 #ifdef MRAA_SPI_TRANSFER_BUF
 //  uint8_t rxData[2];
-  mraa_spi_transfer_buf(SPI, txData, NULL/*rxData*/, 2);
+  TRANSFER_BUF(SPI, txData, NULL/*rxData*/, 2);
 #else
   uint8_t *prxData = mraa_spi_write_buf(SPI, txData, 2);
   if (prxData)
@@ -74,25 +82,25 @@ void inline Adafruit_ILI9341::spiwrite16X2(uint16_t w1, uint16_t w2) {
   txData[3] = w2 & 0xff; 
 #ifdef MRAA_SPI_TRANSFER_BUF
   //uint8_t rxData[4];
-  mraa_spi_transfer_buf(SPI, txData, NULL/*rxData*/, 4);
+  TRANSFER_BUF(SPI, txData, NULL/*rxData*/, 4);
 #else
   uint8_t *prxData = mraa_spi_write_buf(SPI, txData, 4);
   if (prxData)
     free(prxData);
 #endif    
 }
-
-void inline Adafruit_ILI9341::spiwriteN(uint32_t count, uint16_t c) {
     uint8_t txData[2*X86_BUFFSIZE];
-    uint16_t cbWrite = min(count, X86_BUFFSIZE) * 2;
+void inline Adafruit_ILI9341::spiwriteN(uint32_t count, uint16_t c) {
+    uint32_t cbWrite = min(count, X86_BUFFSIZE) * 2;
     count *=2 ; // shift it up one bit so don't have to multiply each time...
-    for (uint16_t i = 0; i < cbWrite; i+=2) {
+    for (uint32_t i = 0; i < cbWrite; i+=2) {
       txData[i] = (c>>8) & 0xff;
       txData[i+1] = c & 0xff;
     }   
     while (count) {
-      mraa_spi_transfer_buf(SPI, txData, NULL, cbWrite);
-	  count -= cbWrite;
+      //mraa_spi_transfer_buf(SPI, txData, NULL, cbWrite);
+      TRANSFER_BUF(SPI, txData, NULL, cbWrite);
+	    count -= cbWrite;
       if (count < cbWrite)
         cbWrite = count;
     }
@@ -646,7 +654,6 @@ void Adafruit_ILI9341::readRect(int16_t x, int16_t y, int16_t w, int16_t h, uint
 void Adafruit_ILI9341::writeRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t *pcolors) 
 {
     uint8_t txdata[X86_BUFFSIZE * 2];   // how many to write at a time.
-    uint8_t *prxData;
     uint16_t iOut = 0;
     spi_begin();
 	setAddr(x, y, x+w-1, y+h-1);
@@ -657,18 +664,14 @@ void Adafruit_ILI9341::writeRect(int16_t x, int16_t y, int16_t w, int16_t h, uin
             txdata[iOut++] = *pcolors >> 8;
             txdata[iOut++] = *pcolors++ & 0xff;
             if (iOut == (X86_BUFFSIZE * 2)) {
-                prxData = mraa_spi_write_buf(SPI, txdata, X86_BUFFSIZE * 2);
-                if (prxData)
-                    free (prxData);
+                mraa_spi_transfer_buf(SPI, txdata, NULL, X86_BUFFSIZE * 2);
                 iOut = 0;    
             }
 		}
 	}
     
     if (iOut) {
-        prxData = mraa_spi_write_buf(SPI, txdata, iOut);
-        if (prxData)
-            free (prxData);
+        mraa_spi_transfer_buf(SPI, txdata, NULL, iOut);
     }
     
     CSHigh();
