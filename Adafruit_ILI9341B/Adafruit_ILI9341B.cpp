@@ -476,6 +476,30 @@ void Adafruit_ILI9341::fillRect(int16_t x, int16_t y, int16_t w, int16_t h,
 
 
 
+#if 1
+#define CNT_BYTES_PER_WRITE 4096
+void Adafruit_ILI9341::update(void) {
+
+  uint8_t *prxData = (uint8_t*)_fbtft;
+  //printf("CBPW: %d\n\r", CNT_BYTES_PER_WRITE);
+  spi_begin();
+  setAddr(0, 0, _width-1, _height-1);
+  writecommand_cont(ILI9341_RAMWR);
+  uint32_t count_bytes_left = 320*240*2;
+  uint32_t cbWrite = CNT_BYTES_PER_WRITE;
+
+  DCHigh();  // make sure we are in data mode
+  while (count_bytes_left) {
+    mraa_spi_transfer_buf(SPI, prxData, NULL, cbWrite);
+    prxData += cbWrite;
+    count_bytes_left -= cbWrite;
+    if (count_bytes_left < cbWrite)
+      cbWrite = count_bytes_left;
+  }
+  CSHigh();
+  spi_end();
+}
+#else
 #define CNT_SPI_WRITES 40
 #define CNT_BYTES_PER_WRITE ((320*240*2)/CNT_SPI_WRITES)
 void Adafruit_ILI9341::update(void) {
@@ -493,7 +517,7 @@ void Adafruit_ILI9341::update(void) {
   CSHigh();
   spi_end();
 }
-
+#endif
 
 // Pass 8-bit (each) R,G,B, get back 16-bit packed color
 uint16_t Adafruit_ILI9341::color565(uint8_t r, uint8_t g, uint8_t b) {
