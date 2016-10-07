@@ -103,7 +103,7 @@ class Adafruit_ILI9341 : public Adafruit_GFX {
 
   Adafruit_ILI9341(int8_t _CS, int8_t _DC, int8_t _RST = -1);
 
-  void     begin(void),
+  void     begin(uint8_t spi_buss=0),
            end(void),
            setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1),
            pushColor(uint16_t color),
@@ -157,6 +157,7 @@ class Adafruit_ILI9341 : public Adafruit_GFX {
   // Use C versions since c++ is simply wrapper anyway
   mraa_gpio_context _gpioDC;
   mraa_gpio_context _gpioCS;
+  mraa_gpio_context _gpioRST;
   
   uint8_t _fDCHigh; // is the DC High
   uint8_t _fCSHigh; // is the CS high... 
@@ -174,9 +175,11 @@ class Adafruit_ILI9341 : public Adafruit_GFX {
 	}
 
   void CSHigh()  __attribute__((always_inline)) {
+        if (_cs > 0) 
             mraa_gpio_write(_gpioCS, 1);
 	}
   void CSLow()  __attribute__((always_inline)) {
+        if (_cs > 0) 
             mraa_gpio_write(_gpioCS, 0);
     }
 #else
@@ -195,13 +198,13 @@ class Adafruit_ILI9341 : public Adafruit_GFX {
 	}
 
   void CSHigh()  __attribute__((always_inline)) {
-        if (!_fCSHigh) {
+        if ((_cs > 0) && !_fCSHigh) {
             mraa_gpio_write(_gpioCS, 1);
             _fCSHigh = 1;
         }
 	}
   void CSLow()  __attribute__((always_inline)) {
-        if (_fCSHigh) {
+        if ((_cs > 0) && _fCSHigh) {
             mraa_gpio_write(_gpioCS, 0);
             _fCSHigh = 0;
         }

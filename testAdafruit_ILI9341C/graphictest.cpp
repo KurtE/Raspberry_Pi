@@ -46,11 +46,11 @@
 
 
 // For the Adafruit shield, these are the default.
-#define TFT_DC 9
-#define TFT_CS 10
-
+#define TFT_DC 29
+#define TFT_CS 22 //-1
+#define TFT_RST 31
 // Use hardware SPI (on Uno, #13, #12, #11) and the above for CS/DC
-Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
+Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 
 WrapperSerial Serial;
 
@@ -130,15 +130,15 @@ void setup() {
   Serial.print(F("Screen fill              "));
   Serial.println(testFillScreen());
   delay(500);
-
+#if 1
   Serial.print(F("Text                     "));
   Serial.println(testText());
   delay(3000);
 
+#endif
   Serial.print(F("Text 2                   "));
   Serial.println(testText2());
   delay(3000);
-
   Serial.print(F("Lines                    "));
   Serial.println(testLines(ILI9341_CYAN));
   delay(500);
@@ -205,6 +205,7 @@ unsigned long testText() {
   tft.fillScreen(ILI9341_BLACK);
   unsigned long start = micros();
   tft.setCursor(0, 0);
+ 
   tft.setTextColor(ILI9341_WHITE);  tft.setTextSize(1);
   tft.println("Hello World!");
   tft.setTextColor(ILI9341_YELLOW); tft.setTextSize(2);

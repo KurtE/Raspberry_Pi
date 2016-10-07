@@ -37,6 +37,7 @@ TCHAIN_PREFIX=arm-linux-gnueabihf-
 endif
 endif
 #TCHAIN_PREFIX=x86_64-linux-gnu-
+TCHAIN_PREFIX=
 
 CXX = $(TCHAIN_PREFIX)g++
 CXXFLAGS = $(COMPILE_OPTS) $(INCLUDE_DIRS)

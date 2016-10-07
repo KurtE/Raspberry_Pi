@@ -25,11 +25,10 @@
 //#include <inttypes.h>
 
 // For the Adafruit shield, these are the default.
-#define TFT_DC 9
-#define TFT_CS 10
-
-// Use hardware SPI (on Uno, #13, #12, #11) and the above for CS/DC
-Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
+#define TFT_DC 29
+#define TFT_CS  22//-1
+#define TFT_RST 31
+Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 
 
 //--------------------------------------------------------------------------
@@ -60,9 +59,14 @@ int main()
 
     printf("ILI9341 Clear screen Test!\n"); 
  
-    tft.begin();
+    tft.begin(0);
     tft.fillScreen(ILI9341_BLACK);
-    tft.end();
     printf("Done\n");
+    tft.fillRect(100, 100, 100, 100, ILI9341_RED);
+
+
+    tft.end();
+
+    delay(5000);
 }
 

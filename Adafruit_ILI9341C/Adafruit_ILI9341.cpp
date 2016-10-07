@@ -40,6 +40,7 @@ Adafruit_ILI9341::Adafruit_ILI9341(int8_t cs, int8_t dc, int8_t rst) : Adafruit_
   SPI = NULL;
   _gpioCS = NULL;
   _gpioDC = NULL;
+  _gpioRST = NULL;
 
 }
 
@@ -198,18 +199,17 @@ void Adafruit_ILI9341::commandList(uint8_t *addr) {
 }
 
 
-void Adafruit_ILI9341::begin(void) {
-  mraa_gpio_context gpioRST = NULL;
+void Adafruit_ILI9341::begin(uint8_t spi_buss) {
   if (_rst > 0) 
-    gpioRST = mraa_gpio_init(_rst);
+    _gpioRST = mraa_gpio_init(_rst);
 
-  if (gpioRST) {
-    mraa_gpio_dir(gpioRST, MRAA_GPIO_OUT);
-    mraa_gpio_write(gpioRST, 0);
+  if (_gpioRST) {
+    mraa_gpio_dir(_gpioRST, MRAA_GPIO_OUT_LOW);
+    //mraa_gpio_write(_gpioRST, 0);
   }
 
 
-  SPI = mraa_spi_init(1);   // which buss?   will experment here...
+  SPI = mraa_spi_init(spi_buss);   // which buss?   will experment here...
   mraa_spi_frequency(SPI, SPI_FREQ);
   mraa_spi_lsbmode(SPI, false);  
   mraa_spi_mode(SPI, MRAA_SPI_MODE0);
@@ -221,21 +221,22 @@ void Adafruit_ILI9341::begin(void) {
   mraa_gpio_write(_gpioDC, 1);  
   _fDCHigh = 1; // init to high
   
-  _gpioCS = mraa_gpio_init(_cs);
-  mraa_gpio_dir(_gpioCS, MRAA_GPIO_OUT);
-  mraa_gpio_use_mmaped(_gpioCS, 1);
-  mraa_gpio_write(_gpioCS, 1);  
-  _fCSHigh = 1; // init to high
+  // If -1 passed in use hardware CS...
+  if (_cs >= 0) {
+    _gpioCS = mraa_gpio_init(_cs);
+    mraa_gpio_dir(_gpioCS, MRAA_GPIO_OUT);
+    mraa_gpio_use_mmaped(_gpioCS, 1);
+    mraa_gpio_write(_gpioCS, 1);  
+    _fCSHigh = 1; // init to high
+  }
 
   // toggle RST low to reset
-  if (gpioRST) {
-    mraa_gpio_write(gpioRST, 1);
+  if (_gpioRST) {
+    mraa_gpio_write(_gpioRST, 1);
     delay(5);
-    mraa_gpio_write(gpioRST, 0);
+    mraa_gpio_write(_gpioRST, 0);
     delay(20);
-    mraa_gpio_write(gpioRST, 1);
-    delay(150);
-    mraa_gpio_close(gpioRST);
+    mraa_gpio_write(_gpioRST, 1);
   }
 
   
@@ -366,7 +367,12 @@ void Adafruit_ILI9341::end(void) {
         mraa_gpio_close(_gpioDC);
         _gpioDC = NULL;
     }
-}
+    if (_gpioRST) {
+        mraa_gpio_dir(_gpioRST, MRAA_GPIO_IN);
+        mraa_gpio_close(_gpioRST);
+        _gpioRST = NULL;
+    }
+  }
 
 
 inline void Adafruit_ILI9341::setAddr(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
@@ -463,7 +469,7 @@ void Adafruit_ILI9341::fillRect(int16_t x, int16_t y, int16_t w, int16_t h,
   if((x >= _width) || (y >= _height)) return;
   if((x + w - 1) >= _width)  w = _width  - x;
   if((y + h - 1) >= _height) h = _height - y;
-
+  //printf("Fill Rect: %d %d %d %d\n\r", x, y, w, h);
   spi_begin();
   setAddrWindow(x, y, x+w-1, y+h-1);
 
@@ -686,6 +692,7 @@ void Adafruit_ILI9341::drawChar(int16_t x, int16_t y, unsigned char c,
         return;
 
     if (fgcolor == bgcolor) {
+        //printf("draw Char f=b : %d %d %c %u %u %u\n\r", x, y, c, fgcolor, bgcolor, size);
         uint8_t line;
         for (int8_t i=0; i<5; i++ ) {
             line = pgm_read_byte(font+(c*5)+i);
@@ -738,6 +745,7 @@ void Adafruit_ILI9341::drawChar(int16_t x, int16_t y, unsigned char c,
         uint8_t cRowsPerWrite = DCA_SIZE / (size*size*8);
         uint8_t iRowPerWrite = 0;
         uint16_t *pcolors = acolors;
+        //printf("draw Char f!=b : %d %d %c %u %u %u\n\r", x, y, c, fgcolor, bgcolor, size);
         for (y=0; y < 8; y++) {
             for (yr=0; yr < size; yr++) {
                 for (x=0; x < 5; x++) {
