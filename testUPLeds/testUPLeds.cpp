@@ -7,9 +7,14 @@
 #include <signal.h>
 #include <errno.h>
 
+#define USE_MRAA
+#ifdef USE_MRAA
+#include "mraa.h"
+#endif
+
 volatile uint8_t g_continue = true;
 
-typedef enum {GREEN_LED = 0, YELLOW_LED = 1, RED_LED = 2} Leds;
+typedef enum {GREEN_LED = 0, YELLOW_LED = 1, RED_LED = 2, BLUE_LED = 3} Leds;
 
 extern bool set_led(Leds led, uint8_t value);
 
@@ -30,6 +35,9 @@ void SignalHandler(int sig){
 
 int main(int argc, char** argv)
 {
+	bool has_blue_led = false;
+	uint8_t exit_loop_count = 8;
+
     struct sigaction sigIntHandler;
 
     sigIntHandler.sa_handler = SignalHandler;
@@ -40,12 +48,33 @@ int main(int argc, char** argv)
 
 	// Pretty simple setup.
 	printf("\n\n*** Start testing leds ***\n");
+#ifdef USE_MRAA
+	mraa_result_t rtv = mraa_init();
+  	//if (rtv != MRAA_SUCCESS && rtv != MRAA_ERROR_PLATFORM_ALREADY_INITIALISED)
+  	if (rtv != MRAA_SUCCESS)
+  	{
+  		printf("MRAA Init Failed,Return Value is %d\n", rtv);
+    	return 0;
+  	}
+  	printf("MRAA Version: %s\nStarting Read\n",mraa_get_version());
+  	printf("MRAA platform: %s\n",  mraa_get_platform_name());
+  	mraa_platform_t platform = mraa_get_platform_type();
+  	if (platform == MRAA_UP) {
+  		printf("Running on UP board - 3 leds\n");
+  	} else if (platform == MRAA_UP2) {
+  		printf("Running on UP2 board - 4 leds\n");
+  		has_blue_led = true;
+  		exit_loop_count = 16;
+  	}
+#endif
+
 	//usleep(250000L);
 	while(g_continue) {
-		for (int i = 0; i < 8; i++) {
+		for (int i = 0; i < exit_loop_count; i++) {
 			set_led(GREEN_LED, (i&1)? 1 : 0);
 			set_led(YELLOW_LED, (i&2)? 1 : 0);
 			set_led(RED_LED, (i&4)? 1 : 0);
+			if (has_blue_led) set_led(BLUE_LED, (i&8)? 1 : 0);
 			usleep(250000L);	// sleep 250ms
 		}
 	}
@@ -53,6 +82,7 @@ int main(int argc, char** argv)
 	set_led(GREEN_LED, 0);
 	set_led(YELLOW_LED, 0);
 	set_led(RED_LED, 0);
+	if (has_blue_led) set_led(BLUE_LED, 0);
 }
 
 bool set_led(Leds led, uint8_t value) {
@@ -69,6 +99,9 @@ bool set_led(Leds led, uint8_t value) {
 			break;
 		case RED_LED:
 			led_handle = open("/sys/class/leds/upboard:red:/brightness", O_WRONLY);
+			break;
+		case BLUE_LED:
+			led_handle = open("/sys/class/leds/upboard:blue:/brightness", O_WRONLY);
 			break;
 	}
 	if (led_handle == -1) {
